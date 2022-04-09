@@ -359,7 +359,6 @@ int main(int argc, char **argv)
 
     mainProgram mainClass;
     ros::Time initialTime = ros::Time::now();
-    mainClass.nh.getParam("/runWhichScript", runWhichScript);
 
     // Main Node Update Frequency
 
@@ -370,16 +369,9 @@ int main(int argc, char **argv)
     string packagePath = ros::package::getPath("main_2022_smol");
 
     cout << endl;
-    if (!runWhichScript)
-    {
-        inFile.open(packagePath + "/include/scriptBig.csv");
-        cout << "<< scriptBig.csv >> ";
-    }
-    else
-    {
-        inFile.open(packagePath + "/include/scriptSmall.csv");
-        cout << "<< scriptSmall.csv >> ";
-    }
+
+    inFile.open(packagePath + "/include/scriptSmall.csv");
+    cout << "<< scriptSmall.csv >> ";
 
     if (inFile.fail())
     {
