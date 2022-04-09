@@ -364,62 +364,11 @@ int main(int argc, char **argv)
 
     ros::Rate rate(200);
 
-    // Script Reading
     ifstream inFile;
-    string packagePath = ros::package::getPath("main_2022_smol");
-
-    cout << endl;
-
-    inFile.open(packagePath + "/include/scriptSmall.csv");
-    cout << "<< scriptSmall.csv >> ";
-
-    if (inFile.fail())
-    {
-        cout << "Could Not Open !" << endl;
-    }
-    else
-    {
-        cout << "Open Successfully !" << endl;
-    }
-
-    cout << endl;
-
     string value;
     string line;
     string field;
-    double next_x;
-    double next_y;
-    double next_z;
-    double next_w;
-    char next_m;
-    while (getline(inFile, line))
-    {
-        istringstream sin(line);
-        getline(sin, field, ',');
-        next_x = atof(field.c_str());
-        // cout << next_x << " ";
-
-        getline(sin, field, ',');
-        next_y = atof(field.c_str());
-        // cout << next_y << " ";
-
-        getline(sin, field, ',');
-        next_z = atof(field.c_str());
-        // cout << next_z << " ";
-
-        getline(sin, field, ',');
-        next_w = atof(field.c_str());
-        // cout << next_w << " ";
-
-        getline(sin, field);
-        const char *cstr = field.c_str();
-        char b = *cstr;
-        next_m = b;
-        // cout << b << endl;
-        mission nextMission(next_x, next_y, next_z, next_w, next_m);
-        mission_List.push_back(nextMission);
-    }
-
+    string packagePath = ros::package::getPath("main_2022_smol");
     int waitCount = 0;
 
     while (ros::ok())
@@ -433,19 +382,69 @@ int main(int argc, char **argv)
 
                 mainClass.nh.getParam("/side_state", side_state);
 
-                if (side_state == '1')
+                if (side_state == 1)
                 {
                     position_x = INI_X_YELLOW;
                     position_y = INI_Y_YELLOW;
                     orientation_z = INI_Z_YELLOW;
                     orientation_w = INI_W_YELLOW;
                 }
-                else if (side_state == '2')
+                else if (side_state == 2)
                 {
                     position_x = INI_X_PURPLE;
                     position_y = INI_Y_PURPLE;
                     orientation_z = INI_Z_PURPLE;
                     orientation_w = INI_W_PURPLE;
+                }
+
+                // Script Reading
+
+                cout << endl;
+                inFile.open(packagePath + "/include/scriptSmall.csv");
+                cout << "<< scriptSmall.csv >> ";
+
+                if (inFile.fail())
+                {
+                    cout << "Could Not Open !" << endl;
+                }
+                else
+                {
+                    cout << "Open Successfully !" << endl;
+                }
+
+                cout << endl;
+
+                double next_x;
+                double next_y;
+                double next_z;
+                double next_w;
+                char next_m;
+                while (getline(inFile, line))
+                {
+                    istringstream sin(line);
+                    getline(sin, field, ',');
+                    next_x = atof(field.c_str());
+                    // cout << next_x << " ";
+
+                    getline(sin, field, ',');
+                    next_y = atof(field.c_str());
+                    // cout << next_y << " ";
+
+                    getline(sin, field, ',');
+                    next_z = atof(field.c_str());
+                    // cout << next_z << " ";
+
+                    getline(sin, field, ',');
+                    next_w = atof(field.c_str());
+                    // cout << next_w << " ";
+
+                    getline(sin, field);
+                    const char *cstr = field.c_str();
+                    char b = *cstr;
+                    next_m = b;
+                    // cout << b << endl;
+                    mission nextMission(next_x, next_y, next_z, next_w, next_m);
+                    mission_List.push_back(nextMission);
                 }
 
                 mainClass.nh.getParam("/mission_waitTime", mission_waitTime);
