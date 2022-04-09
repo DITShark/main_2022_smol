@@ -10,6 +10,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <main_2022_smol/Mission_srv_smol.h>
+#include <ros/package.h>
 
 #include <iostream>
 #include <stdlib.h>
@@ -210,20 +211,20 @@ public:
 
     void emergency_callback(const std_msgs::Bool::ConstPtr &msg)
     {
-        // if (msg->data)
-        // {
-        //   now_Mode = 0;
-        //   std_msgs::Bool publisher;
-        //   publisher.data = true;
-        //   _StopOrNot.publish(publisher);
-        // }
-        // else
-        // {
-        //   now_Mode = 1;
-        //   std_msgs::Bool publisher;
-        //   publisher.data = false;
-        //   _StopOrNot.publish(publisher);
-        // }
+        if (msg->data)
+        {
+            now_Mode = 0;
+            std_msgs::Bool publisher;
+            publisher.data = true;
+            _StopOrNot.publish(publisher);
+        }
+        else
+        {
+            now_Mode = 1;
+            std_msgs::Bool publisher;
+            publisher.data = false;
+            _StopOrNot.publish(publisher);
+        }
     }
 
     void moving_callback(const std_msgs::Bool::ConstPtr &msg)
@@ -236,6 +237,7 @@ public:
             }
             else
             {
+
 #if OPEN_POSITION_ADJUSTMENT
                 checkPosError(new mission(x, y, theta, 'X'), mission_List[goal_num]);
 #endif
@@ -365,17 +367,18 @@ int main(int argc, char **argv)
 
     // Script Reading
     ifstream inFile;
+    string packagePath = ros::package::getPath("main_2022_smol");
 
     cout << endl;
     if (!runWhichScript)
     {
-        inFile.open("/home/ubuntu/Eurobot2022_ws/scriptBig.csv");
-        cout << "File << Eurobot2022_ws/scriptBig.csv >> ";
+        inFile.open(packagePath + "/include/scriptBig.csv");
+        cout << "<< scriptBig.csv >> ";
     }
     else
     {
-        inFile.open("/home/ubuntu/eurobot_ros_ws/scriptSmall.csv");
-        cout << "File << eurobot_ros_ws/scriptSmall.csv >> ";
+        inFile.open(packagePath + "/include/scriptSmall.csv");
+        cout << "<< scriptSmall.csv >> ";
     }
 
     if (inFile.fail())
@@ -386,6 +389,9 @@ int main(int argc, char **argv)
     {
         cout << "Open Successfully !" << endl;
     }
+
+    cout << endl;
+
     string value;
     string line;
     string field;
