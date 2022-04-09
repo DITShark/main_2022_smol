@@ -211,20 +211,20 @@ public:
 
     void emergency_callback(const std_msgs::Bool::ConstPtr &msg)
     {
-        if (msg->data)
-        {
-            now_Mode = 0;
-            std_msgs::Bool publisher;
-            publisher.data = true;
-            _StopOrNot.publish(publisher);
-        }
-        else
-        {
-            now_Mode = 1;
-            std_msgs::Bool publisher;
-            publisher.data = false;
-            _StopOrNot.publish(publisher);
-        }
+        // if (msg->data)
+        // {
+        //     now_Mode = 0;
+        //     std_msgs::Bool publisher;
+        //     publisher.data = true;
+        //     _StopOrNot.publish(publisher);
+        // }
+        // else
+        // {
+        //     now_Mode = 1;
+        //     std_msgs::Bool publisher;
+        //     publisher.data = false;
+        //     _StopOrNot.publish(publisher);
+        // }
     }
 
     void moving_callback(const std_msgs::Bool::ConstPtr &msg)
