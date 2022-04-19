@@ -546,6 +546,7 @@ int main(int argc, char **argv)
             case FINISH:
                 if (!finishMission)
                 {
+                    now_Status = 0;
                     std_msgs::Float32 tt;
                     tt.data = ros::Time::now().toSec() - initialTime.toSec();
                     cout << "Mission Time: " << tt.data << endl;
