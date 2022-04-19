@@ -307,6 +307,9 @@ public:
     bool start_callback(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
     {
         run_state = 1;
+        now_Status = 1;
+        mission_num = 0;
+        goal_num = 0;
         return true;
     }
 
@@ -546,40 +549,13 @@ int main(int argc, char **argv)
             case FINISH:
                 if (!finishMission)
                 {
-                    now_Status = 0;
+                    run_state = 0;
                     std_msgs::Float32 tt;
                     tt.data = ros::Time::now().toSec() - initialTime.toSec();
                     cout << "Mission Time: " << tt.data << endl;
                     mainClass._time.publish(tt);
                     ROS_INFO("Finish All Mission");
                     finishMission = true;
-                }
-
-                if (run_state)
-                {
-                    now_Status = 1;
-                    mission_num = 0;
-                    goal_num = 0;
-                    if (mission_List.size() == 0)
-                    {
-                        now_Status++;
-                    }
-                    else
-                    {
-                        initialTime = ros::Time::now();
-                        while (mission_List[goal_num].get_missionType() == '0')
-                        {
-                            goal_num++;
-                        }
-                        next_target.pose.position.x = mission_List[goal_num].get_x();
-                        next_target.pose.position.y = mission_List[goal_num].get_y();
-                        next_target.pose.orientation.z = mission_List[goal_num].get_z();
-                        next_target.pose.orientation.w = mission_List[goal_num].get_w();
-                        mainClass._target.publish(next_target);
-                        moving = true;
-                        ROS_INFO("Moving to x:[%f] y:[%f]", mission_List[goal_num].get_x(), mission_List[goal_num].get_y());
-                        cout << endl;
-                    }
                 }
 
                 break;
