@@ -103,8 +103,6 @@ public:
 
 // Program Adjustment
 
-const bool OPEN_POSITION_ADJUSTMENT = false;
-
 // Adjustment Variable Define
 
 const double INI_X_PURPLE = 0;
@@ -149,37 +147,6 @@ vector<int> missionTime_correct_Type;
 vector<double> missionTime_correct_Num;
 
 // Function Define
-
-#if OPEN_POSITION_ADJUSTMENT
-
-void checkPosError(mission real, mission target)
-{
-    double x_correction = 0;
-    double y_correction = 0;
-    double theta_correction = 0;
-    if (abs(real.get_x() - target.get_x()) < POSITION_CORRECTION_ERROR)
-    {
-        x_correction = target.get_x() - real.get_x();
-    }
-    if (abs(real.get_y() - target.get_y()) < POSITION_CORRECTION_ERROR)
-    {
-        y_correction = target.get_y() - real.get_y();
-    }
-    if (abs(real.get_theta() - target.get_theta()) < POSITION_CORRECTION_ERROR)
-    {
-        theta_correction = target.get_theta() - real.get_theta();
-    }
-    if (x_correction != 0 && y_correction != 0 && theta_correction != 0)
-    {
-        position_correction = true;
-        next_correction.x = x_correction;
-        next_correction.y = y_correction;
-        next_correction.theta = theta_correction;
-        _positionCorrection.publish(next_correction);
-    }
-}
-
-#endif
 
 void correctMissionTime(char missionC) // Create Rules for mission Wait Time
 {
@@ -236,42 +203,35 @@ public:
             }
             else
             {
-
-#if OPEN_POSITION_ADJUSTMENT
-                checkPosError(new mission(x, y, theta, 'X'), mission_List[goal_num]);
-#endif
-                if (!position_correction)
+                moving = false;
+                if (mission_List[goal_num].get_missionType() == 'X')
                 {
-                    moving = false;
-                    if (mission_List[goal_num].get_missionType() == 'X')
+                    mission_num++;
+                    goal_num++;
+                    while (mission_List[goal_num].get_missionType() == '0')
                     {
-                        mission_num++;
                         goal_num++;
-                        while (mission_List[goal_num].get_missionType() == '0')
-                        {
-                            goal_num++;
-                        }
-                        next_target.pose.position.x = mission_List[goal_num].get_x();
-                        next_target.pose.position.y = mission_List[goal_num].get_y();
-                        next_target.pose.orientation.z = mission_List[goal_num].get_z();
-                        next_target.pose.orientation.w = mission_List[goal_num].get_w();
-                        _target.publish(next_target);
-                        moving = true;
-                        ROS_INFO("Moving to x:[%f] y:[%f]", mission_List[goal_num].get_x(), mission_List[goal_num].get_y());
-                        cout << endl;
                     }
-                    else
-                    {
-                        doing = true;
-                        std_msgs::Char mm;
-                        mm.data = mission_List[goal_num].get_missionType();
-                        _arm.publish(mm);
-                        ROS_INFO("Doing Mission Now... [ %c ]", mission_List[goal_num].get_missionType());
-                        cout << endl;
-                        startMissionTime = ros::Time::now().toSec();
-                        nh.getParam("/mission_waitTime", mission_waitTime);
-                        correctMissionTime(mission_List[goal_num].get_missionType());
-                    }
+                    next_target.pose.position.x = mission_List[goal_num].get_x();
+                    next_target.pose.position.y = mission_List[goal_num].get_y();
+                    next_target.pose.orientation.z = mission_List[goal_num].get_z();
+                    next_target.pose.orientation.w = mission_List[goal_num].get_w();
+                    _target.publish(next_target);
+                    moving = true;
+                    ROS_INFO("Moving to x:[%f] y:[%f]", mission_List[goal_num].get_x(), mission_List[goal_num].get_y());
+                    cout << endl;
+                }
+                else
+                {
+                    doing = true;
+                    std_msgs::Char mm;
+                    mm.data = mission_List[goal_num].get_missionType();
+                    _arm.publish(mm);
+                    ROS_INFO("Doing Mission Now... [ %c ]", mission_List[goal_num].get_missionType());
+                    cout << endl;
+                    startMissionTime = ros::Time::now().toSec();
+                    nh.getParam("/mission_waitTime", mission_waitTime);
+                    correctMissionTime(mission_List[goal_num].get_missionType());
                 }
             }
         }
@@ -313,20 +273,6 @@ public:
         return true;
     }
 
-#if OPEN_POSITION_ADJUSTMENT
-
-    void correction_callback(const std_msgs::Bool::ConstPtr &msg)
-    {
-        if (msg->data && position_correction && OPEN_POSITION_ADJUSTMENT)
-        {
-            mission_num++;
-            position_correction = false;
-            moving = false;
-        }
-    }
-
-#endif
-
     ros::NodeHandle nh;
 
     // ROS Topics Publishers
@@ -347,13 +293,6 @@ public:
     ros::ServiceServer _RunState = nh.advertiseService("startRunning", &mainProgram::start_callback, this);      // Start Signal Service
 
     // ROS Service Client
-
-#if OPEN_POSITION_ADJUSTMENT
-
-    ros::Publisher _positionCorrection = nh.advertise<geometry_msgs::Pose2D>("positionCorrection", 1000);
-    ros::Subscriber _correctionFinish = nh.subscribe<std_msgs::Bool>("CorrectionFinish", 1000, correction_callback);
-
-#endif
 };
 
 // Main Program
