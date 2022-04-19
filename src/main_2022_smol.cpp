@@ -9,8 +9,8 @@
 #include <nav_msgs/GetPlan.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <main_2022_smol/Mission_srv_smol.h>
 #include <ros/package.h>
+#include <std_srvs/Empty.h>
 
 #include <iostream>
 #include <stdlib.h>
@@ -124,7 +124,6 @@ const double POSITION_CORRECTION_ERROR = 10;
 int side_state; // 1 for yellow , 2 for purple
 int run_state;
 double mission_waitTime;
-int runWhichScript; // 0 for big , 1 for small
 
 int mission_num = 0;
 int goal_num = 0;
@@ -147,7 +146,7 @@ geometry_msgs::Pose2D next_correction;
 
 vector<mission> mission_List;
 vector<int> missionTime_correct_Type;
-vector<double> missionTime_correct_Num;
+vector<int> missionTime_correct_Num;
 
 // Function Define
 
@@ -258,7 +257,7 @@ public:
                         next_target.pose.orientation.w = mission_List[goal_num].get_w();
                         _target.publish(next_target);
                         moving = true;
-                        ROS_INFO("1 Moving to x:[%f] y:[%f]", mission_List[goal_num].get_x(), mission_List[goal_num].get_y());
+                        ROS_INFO("Moving to x:[%f] y:[%f]", mission_List[goal_num].get_x(), mission_List[goal_num].get_y());
                         cout << endl;
                     }
                     else
@@ -305,6 +304,12 @@ public:
         return true;
     }
 
+    bool start_callback(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
+    {
+        run_state = 1;
+        return true;
+    }
+
 #if OPEN_POSITION_ADJUSTMENT
 
     void correction_callback(const std_msgs::Bool::ConstPtr &msg)
@@ -336,9 +341,9 @@ public:
 
     // ROS Service Server
     ros::ServiceServer _MissionPath = nh.advertiseService("MissionPath", &mainProgram::givePath_callback, this); // Path giving Service
+    ros::ServiceServer _RunState = nh.advertiseService("startRunning", &mainProgram::start_callback, this);      // Start Signal Service
 
     // ROS Service Client
-    // ros::ServiceClient _mission = nh.serviceClient<main_2022_smol::Mission_srv_smol>("Mission"); // Mission Giving Service
 
 #if OPEN_POSITION_ADJUSTMENT
 
@@ -453,7 +458,7 @@ int main(int argc, char **argv)
 
                 for (size_t i = 0; i < missionTime_correct_Type.size(); i++)
                 {
-                    ROS_INFO("Mission [%c] Correct to %f secs", missionTime_correct_Type[i], missionTime_correct_Num[i]);
+                    ROS_INFO("Mission [%c] Correct to %d secs", missionTime_correct_Type[i], missionTime_correct_Num[i]);
                 }
                 cout << endl;
 
@@ -461,10 +466,10 @@ int main(int argc, char **argv)
                 break;
 
             case READY:
-                mainClass.nh.getParam("/run_state", run_state);
                 if (run_state)
                 {
                     now_Status++;
+                    run_state = 0;
                     if (mission_List.size() == 0)
                     {
                         now_Status++;
@@ -482,7 +487,7 @@ int main(int argc, char **argv)
                         next_target.pose.orientation.w = mission_List[goal_num].get_w();
                         mainClass._target.publish(next_target);
                         moving = true;
-                        ROS_INFO("2 Moving to x:[%f] y:[%f]", mission_List[goal_num].get_x(), mission_List[goal_num].get_y());
+                        ROS_INFO("Moving to x:[%f] y:[%f]", mission_List[goal_num].get_x(), mission_List[goal_num].get_y());
                         cout << endl;
                     }
                 }
@@ -531,7 +536,7 @@ int main(int argc, char **argv)
                             next_target.pose.orientation.w = mission_List[goal_num].get_w();
                             mainClass._target.publish(next_target);
                             moving = true;
-                            ROS_INFO("3 Moving to x:[%f] y:[%f]", mission_List[goal_num].get_x(), mission_List[goal_num].get_y());
+                            ROS_INFO("Moving to x:[%f] y:[%f]", mission_List[goal_num].get_x(), mission_List[goal_num].get_y());
                             cout << endl;
                         }
                     }
@@ -547,6 +552,33 @@ int main(int argc, char **argv)
                     mainClass._time.publish(tt);
                     ROS_INFO("Finish All Mission");
                     finishMission = true;
+                }
+
+                if (run_state)
+                {
+                    now_Status = 1;
+                    mission_num = 0;
+                    goal_num = 0;
+                    if (mission_List.size() == 0)
+                    {
+                        now_Status++;
+                    }
+                    else
+                    {
+                        initialTime = ros::Time::now();
+                        while (mission_List[goal_num].get_missionType() == '0')
+                        {
+                            goal_num++;
+                        }
+                        next_target.pose.position.x = mission_List[goal_num].get_x();
+                        next_target.pose.position.y = mission_List[goal_num].get_y();
+                        next_target.pose.orientation.z = mission_List[goal_num].get_z();
+                        next_target.pose.orientation.w = mission_List[goal_num].get_w();
+                        mainClass._target.publish(next_target);
+                        moving = true;
+                        ROS_INFO("Moving to x:[%f] y:[%f]", mission_List[goal_num].get_x(), mission_List[goal_num].get_y());
+                        cout << endl;
+                    }
                 }
 
                 break;
