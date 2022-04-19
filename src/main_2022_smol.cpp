@@ -146,7 +146,7 @@ geometry_msgs::Pose2D next_correction;
 
 vector<mission> mission_List;
 vector<int> missionTime_correct_Type;
-vector<int> missionTime_correct_Num;
+vector<double> missionTime_correct_Num;
 
 // Function Define
 
@@ -458,7 +458,7 @@ int main(int argc, char **argv)
 
                 for (size_t i = 0; i < missionTime_correct_Type.size(); i++)
                 {
-                    ROS_INFO("Mission [%c] Correct to %d secs", missionTime_correct_Type[i], missionTime_correct_Num[i]);
+                    ROS_INFO("Mission [%c] Correct to %f secs", missionTime_correct_Type[i], missionTime_correct_Num[i]);
                 }
                 cout << endl;
 
