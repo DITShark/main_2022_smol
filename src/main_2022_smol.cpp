@@ -171,13 +171,12 @@ const double INI_Y_YELLOW = 0.257;
 const double INI_Z_YELLOW = -0.263;
 const double INI_W_YELLOW = 0.9646;
 
-const double POSITION_CORRECTION_ERROR = 10;
-
 // Variable Define
 
 int side_state; // 1 for yellow , 2 for purple
-int run_state;
+int run_state = 0;
 double mission_waitTime;
+double waitTime_Normal;
 
 int mission_num = 0;
 int goal_num = 0;
@@ -186,7 +185,6 @@ int now_Mode = 1;
 
 bool moving = false;
 bool doing = false;
-bool position_correction = false;
 bool finishMission = false;
 
 double position_x;
@@ -213,6 +211,17 @@ void correctMissionTime(int missionC) // Create Rules for mission Wait Time
         {
             mission_waitTime = missionTime_correct_Num[i];
             break;
+        }
+    }
+}
+
+char getMissionChar(int num)
+{
+    for (size_t i; i < mission_List.size(); i++)
+    {
+        if (num == mission_List[i].get_missionOrder())
+        {
+            return mission_List[i].get_missionType();
         }
     }
 }
@@ -252,16 +261,16 @@ public:
 
     void moving_callback(const std_msgs::Bool::ConstPtr &msg)
     {
-        if (msg->data && moving)
+        if (msg->data && moving && now_Status > 1)
         {
-            if (goal_num == path_List.size() - 1 && path_List[goal_num].get_pathType() != 0 && mission_List[path_List[goal_num].get_pathType() - 1].get_missionType() == 'X')
+            if (goal_num == path_List.size() - 1 && path_List[goal_num].get_pathType() != 0 && getMissionChar(path_List[goal_num].get_pathType()) == 'X')
             {
                 now_Status++;
             }
             else
             {
                 moving = false;
-                if (path_List[goal_num].get_pathType() != 0 && mission_List[path_List[goal_num].get_pathType() - 1].get_missionType() == 'X')
+                if (path_List[goal_num].get_pathType() != 0 && getMissionChar(path_List[goal_num].get_pathType()) == 'X')
                 {
                     mission_num++;
                     goal_num++;
@@ -282,12 +291,12 @@ public:
                 {
                     doing = true;
                     std_msgs::Char mm;
-                    mm.data = mission_List[path_List[goal_num].get_pathType() - 1].get_missionType();
+                    mm.data = getMissionChar(path_List[goal_num].get_pathType());
                     _arm.publish(mm);
                     ROS_INFO("Doing Mission Now... [ %c ]", mm.data);
                     cout << endl;
                     startMissionTime = ros::Time::now().toSec();
-                    nh.getParam("/mission_waitTime", mission_waitTime);
+                    mission_waitTime = waitTime_Normal;
                     correctMissionTime(path_List[goal_num].get_pathType());
                 }
             }
@@ -328,6 +337,9 @@ public:
             now_Status = 1;
             mission_num = 0;
             goal_num = 0;
+            moving = false;
+            doing = false;
+            finishMission = false;
         }
         else
         {
@@ -379,6 +391,10 @@ int main(int argc, char **argv)
     string line;
     string field;
     string packagePath = ros::package::getPath("main_2022_smol");
+    string filename_mission;
+    string filename_path;
+    mainClass.nh.getParam("/file_name_mission", filename_mission);
+    mainClass.nh.getParam("/file_name_path", filename_path);
     int waitCount = 0;
 
     while (ros::ok())
@@ -418,8 +434,8 @@ int main(int argc, char **argv)
                 int next_o;
 
                 cout << endl;
-                inFile.open(packagePath + "/include/missionPoint.csv");
-                cout << "<< missionPoint.csv >> ";
+                inFile.open(packagePath + "/include/" + filename_mission);
+                cout << "Mission Point CSV File << " << filename_mission << " >> ";
                 if (inFile.fail())
                 {
                     cout << "Could Not Open !" << endl;
@@ -434,41 +450,45 @@ int main(int argc, char **argv)
                     istringstream sin(line);
                     getline(sin, field, ',');
                     next_x = atof(field.c_str());
-                    // cout << next_x << " ";
+                    if (next_x == 0)
+                    {
+                        continue;
+                    }
+                    cout << next_x << " ";
 
                     getline(sin, field, ',');
                     next_y = atof(field.c_str());
-                    // cout << next_y << " ";
+                    cout << next_y << " ";
 
                     getline(sin, field, ',');
                     next_z = atof(field.c_str());
-                    // cout << next_z << " ";
+                    cout << next_z << " ";
 
                     getline(sin, field, ',');
                     next_w = atof(field.c_str());
-                    // cout << next_w << " ";
+                    cout << next_w << " ";
 
                     getline(sin, field, ',');
                     const char *cstr = field.c_str();
                     char b = *cstr;
                     next_m = b;
-                    // cout << next_m << " ";
+                    cout << next_m << " ";
 
                     getline(sin, field, ',');
                     next_p = atoi(field.c_str());
-                    // cout << next_p << " ";
+                    cout << next_p << " ";
 
                     getline(sin, field, ',');
                     next_o = atoi(field.c_str());
-                    // cout << next_o << " ";
+                    cout << next_o << endl;
 
                     missionPoint nextPoint(next_x, next_y, next_z, next_w, next_m, next_p, next_o);
                     mission_List.push_back(nextPoint);
                 }
                 inFile.close();
 
-                inFile.open(packagePath + "/include/scriptSmall.csv");
-                cout << "<< scriptSmall.csv >> ";
+                inFile.open(packagePath + "/include/" + filename_path);
+                cout << "Path CSV File << " << filename_path << " >> ";
                 if (inFile.fail())
                 {
                     cout << "Could Not Open !" << endl;
@@ -492,7 +512,6 @@ int main(int argc, char **argv)
                         next_y = mission_List[next_o - 1].get_y();
                         next_z = mission_List[next_o - 1].get_z();
                         next_w = mission_List[next_o - 1].get_w();
-                        next_m = next_o;
                     }
                     else
                     {
@@ -511,32 +530,30 @@ int main(int argc, char **argv)
                         getline(sin, field, ',');
                         next_w = atof(field.c_str());
                         // cout << next_w << " ";
-
-                        next_m = '0';
                     }
 
                     // cout << next_m << endl;
 
                     if (side_state == 1)
                     {
-                        Path nextMission(next_x, next_y, next_z, next_w, next_m);
+                        Path nextMission(next_x, next_y, next_z, next_w, next_o);
                         path_List.push_back(nextMission);
                     }
                     else if (side_state == 2)
                     {
-                        Path nextMission(next_x, 3 - next_y, -next_z, next_w, next_m);
+                        Path nextMission(next_x, 3 - next_y, -next_z, next_w, next_o);
                         path_List.push_back(nextMission);
                     }
                     // cout << next_x << " " << next_y << " " << next_z << " " << next_w << " " << next_m << endl;
                 }
 
-                mainClass.nh.getParam("/mission_waitTime", mission_waitTime);
+                mainClass.nh.getParam("/mission_waitTime", waitTime_Normal);
                 mainClass.nh.param("/missionTime_correct_Type", missionTime_correct_Type, missionTime_correct_Type);
                 mainClass.nh.param("/missionTime_correct_Num", missionTime_correct_Num, missionTime_correct_Num);
 
                 for (size_t i = 0; i < missionTime_correct_Type.size(); i++)
                 {
-                    ROS_INFO("Mission [%c] Correct to %f secs", missionTime_correct_Type[i], missionTime_correct_Num[i]);
+                    ROS_INFO("Mission Num.%2d Correct to %.1f secs", missionTime_correct_Type[i], missionTime_correct_Num[i]);
                 }
                 cout << endl;
 

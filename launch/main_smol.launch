@@ -1,7 +1,8 @@
 <launch>
-        <param name="/run_state" type="int" value="0" />
         <param name="/side_state" type="int" value="1" />
         <param name="/mission_waitTime" type="double" value="1" />
+        <param name="/file_name_mission" type="string" value="missionPoint.csv" />
+        <param name="/file_name_path" type="string" value="scriptSmall.csv" />
         <rosparam param="/missionTime_correct_Type">[21, 22, 10, 11, 12, 13, 1, 14, 23]</rosparam>
         <rosparam param="/missionTime_correct_Num">[2, 1.5, 2, 2, 2, 2, 1.5, 1.2, 0.2]</rosparam>
     <node name="Main_Node_Smol" pkg="main_2022_smol" type="main_2022_smol" output="screen">
