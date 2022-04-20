@@ -79,6 +79,10 @@ public:
             this->pathType = pathType;
         }
     }
+    void printOut()
+    {
+        cout << x << " " << y << " " << z << " " << w << " " << pathType << endl;
+    }
     double get_x()
     {
         return x;
@@ -126,6 +130,10 @@ public:
     void changeMissionType(char newMission)
     {
         missionType = newMission;
+    }
+    void printOut()
+    {
+        cout << x << " " << y << " " << z << " " << w << " " << missionType << " " << point << " " << missionOrder << endl;
     }
     double get_x()
     {
@@ -193,6 +201,8 @@ double orientation_z;
 double orientation_w;
 double startMissionTime;
 
+int total_Point = 0;
+
 geometry_msgs::PoseStamped next_target;
 geometry_msgs::Pose2D next_correction;
 
@@ -217,13 +227,26 @@ void correctMissionTime(int missionC) // Create Rules for mission Wait Time
 
 char getMissionChar(int num)
 {
-    for (size_t i; i < mission_List.size(); i++)
+    for (size_t i = 0; i < mission_List.size(); i++)
     {
         if (num == mission_List[i].get_missionOrder())
         {
             return mission_List[i].get_missionType();
         }
     }
+    return '#';
+}
+
+int getMissionPoint(int num)
+{
+    for (size_t i = 0; i < mission_List.size(); i++)
+    {
+        if (num == mission_List[i].get_missionOrder())
+        {
+            return mission_List[i].get_point();
+        }
+    }
+    return 0;
 }
 
 // Node Handling Class Define
@@ -340,6 +363,7 @@ public:
             moving = false;
             doing = false;
             finishMission = false;
+            total_Point = 0;
         }
         else
         {
@@ -355,6 +379,7 @@ public:
     ros::Publisher _StopOrNot = nh.advertise<std_msgs::Bool>("Stopornot", 1000);       // Publish emergency state to controller
     ros::Publisher _arm = nh.advertise<std_msgs::Char>("arm_go_where", 1000);          // Publish mission to mission
     ros::Publisher _time = nh.advertise<std_msgs::Float32>("total_Time", 1000);        // Publish total Time
+    ros::Publisher _point = nh.advertise<std_msgs::Int32>("total_Point", 1000);        // Publish total Point
 
     // ROS Topics Subscribers
     // ros::Subscriber _globalFilter = nh.subscribe<nav_msgs::Odometry>("global_filter", 1000, &mainProgram::position_callback, this);               // Get position from localization
@@ -381,6 +406,8 @@ int main(int argc, char **argv)
 
     mainProgram mainClass;
     ros::Time initialTime = ros::Time::now();
+    std_msgs::Float32 timePublish;
+    std_msgs::Int32 pointPublish;
 
     // Main Node Update Frequency
 
@@ -454,37 +481,43 @@ int main(int argc, char **argv)
                     {
                         continue;
                     }
-                    cout << next_x << " ";
+                    // cout << next_x << " ";
 
                     getline(sin, field, ',');
                     next_y = atof(field.c_str());
-                    cout << next_y << " ";
+                    // cout << next_y << " ";
 
                     getline(sin, field, ',');
                     next_z = atof(field.c_str());
-                    cout << next_z << " ";
+                    // cout << next_z << " ";
 
                     getline(sin, field, ',');
                     next_w = atof(field.c_str());
-                    cout << next_w << " ";
+                    // cout << next_w << " ";
 
                     getline(sin, field, ',');
                     const char *cstr = field.c_str();
                     char b = *cstr;
                     next_m = b;
-                    cout << next_m << " ";
+                    // cout << next_m << " ";
 
                     getline(sin, field, ',');
                     next_p = atoi(field.c_str());
-                    cout << next_p << " ";
+                    // cout << next_p << " ";
 
                     getline(sin, field, ',');
                     next_o = atoi(field.c_str());
-                    cout << next_o << endl;
+                    // cout << next_o << endl;
 
                     missionPoint nextPoint(next_x, next_y, next_z, next_w, next_m, next_p, next_o);
                     mission_List.push_back(nextPoint);
                 }
+
+                // for (size_t i = 0; i < mission_List.size(); i++)
+                // {
+                //     mission_List[i].printOut();
+                // }
+
                 inFile.close();
 
                 inFile.open(packagePath + "/include/" + filename_path);
@@ -509,9 +542,13 @@ int main(int argc, char **argv)
                     if (next_o)
                     {
                         next_x = mission_List[next_o - 1].get_x();
+                        // cout << next_x << " ";
                         next_y = mission_List[next_o - 1].get_y();
+                        // cout << next_y << " ";
                         next_z = mission_List[next_o - 1].get_z();
+                        // cout << next_z << " ";
                         next_w = mission_List[next_o - 1].get_w();
+                        // cout << next_w << endl;
                     }
                     else
                     {
@@ -529,10 +566,8 @@ int main(int argc, char **argv)
 
                         getline(sin, field, ',');
                         next_w = atof(field.c_str());
-                        // cout << next_w << " ";
+                        // cout << next_w << endl;
                     }
-
-                    // cout << next_m << endl;
 
                     if (side_state == 1)
                     {
@@ -546,6 +581,11 @@ int main(int argc, char **argv)
                     }
                     // cout << next_x << " " << next_y << " " << next_z << " " << next_w << " " << next_m << endl;
                 }
+
+                // for (size_t i = 0; i < path_List.size(); i++)
+                // {
+                //     path_List[i].printOut();
+                // }
 
                 mainClass.nh.getParam("/mission_waitTime", waitTime_Normal);
                 mainClass.nh.param("/missionTime_correct_Type", missionTime_correct_Type, missionTime_correct_Type);
@@ -612,6 +652,7 @@ int main(int argc, char **argv)
                     else
                     {
                         doing = false;
+                        total_Point += getMissionPoint(path_List[goal_num].get_pathType());
                         if (goal_num == path_List.size() - 1)
                         {
                             now_Status++;
@@ -635,16 +676,22 @@ int main(int argc, char **argv)
                         }
                     }
                 }
+                timePublish.data = ros::Time::now().toSec() - initialTime.toSec();
+                mainClass._time.publish(timePublish);
                 break;
 
             case FINISH:
                 if (!finishMission)
                 {
-                    run_state = 0;
-                    std_msgs::Float32 tt;
-                    tt.data = ros::Time::now().toSec() - initialTime.toSec();
-                    cout << "Mission Time: " << tt.data << endl;
-                    mainClass._time.publish(tt);
+                    timePublish.data = ros::Time::now().toSec() - initialTime.toSec();
+                    ROS_INFO("Mission Time: %f", timePublish.data);
+                    mainClass._time.publish(timePublish);
+
+                    pointPublish.data = total_Point;
+                    ROS_INFO("Total Point: %d", pointPublish.data);
+                    mainClass._point.publish(pointPublish);
+
+                    cout << endl;
                     ROS_INFO("Finish All Mission");
                     finishMission = true;
                 }
