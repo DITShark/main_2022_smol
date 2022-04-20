@@ -4,10 +4,10 @@
         <param name="/file_name_mission" type="string" value="missionPoint.csv" />
         <param name="/file_name_path" type="string" value="scriptSmall.csv" />
         <rosparam param="/missionTime_correct_Type">[21, 22, 10, 11, 12, 13, 1, 14, 23]</rosparam>
-        <rosparam param="/missionTime_correct_Num">[2, 1.5, 2, 2, 2, 2, 1.5, 1.2, 0.2]</rosparam>
-        <rosparam param="/set_Chassis_Param_Type">[15, 18]</rosparam>
-        <rosparam param="/set_Chassis_Param_xy">[0.03, 0.03]</rosparam>
-        <rosparam param="/set_Chassis_Param_theta">[0.05, 0.05]</rosparam>
+        <rosparam param="/missionTime_correct_Num">[2, 1.5, 2, 2, 2, 2, 2, 1.2, 0.2]</rosparam>
+        <rosparam param="/set_Chassis_Param_Type">[15, 4, 8]</rosparam>
+        <rosparam param="/set_Chassis_Param_xy">[0.03, 0.05, 0.05]</rosparam>
+        <rosparam param="/set_Chassis_Param_theta">[0.05, 0.03, 0.03]</rosparam>
     <node name="Main_Node_Smol" pkg="main_2022_smol" type="main_2022_smol" output="screen">
     <!-- <node name="Main_Node_Smol" pkg="main_2022_smol" type="main_2022_smol_Emerge" output="screen"> -->
     </node>
