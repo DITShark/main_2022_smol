@@ -38,25 +38,25 @@ enum Mode
 
 // Class Define
 
-class mission
+class Path
 {
 private:
     double x;
     double y;
     double z;
     double w;
-    char missionType;
+    int pathType;
 
 public:
-    mission(double x, double y, double z, double w, char missionType)
+    Path(double x, double y, double z, double w, int pathType)
     {
         this->x = x;
         this->y = y;
         this->z = z;
         this->w = w;
-        this->missionType = missionType;
+        this->pathType = pathType;
     };
-    void update(double x, double y, double z, double w, char missionType)
+    void update(double x, double y, double z, double w, int pathType)
     {
         if (x != -1)
         {
@@ -74,10 +74,58 @@ public:
         {
             this->w = w;
         }
-        if (missionType != -1)
+        if (pathType != -1)
         {
-            this->missionType = missionType;
+            this->pathType = pathType;
         }
+    }
+    double get_x()
+    {
+        return x;
+    }
+    double get_y()
+    {
+        return y;
+    }
+    double get_z()
+    {
+        return z;
+    }
+    double get_w()
+    {
+        return w;
+    }
+    int get_pathType()
+    {
+        return pathType;
+    }
+};
+
+class missionPoint
+{
+private:
+    double x;
+    double y;
+    double z;
+    double w;
+    char missionType;
+    int point;
+    int missionOrder;
+
+public:
+    missionPoint(double x, double y, double z, double w, char missionType, int point, int missionOrder)
+    {
+        this->x = x;
+        this->y = y;
+        this->z = z;
+        this->w = w;
+        this->missionType = missionType;
+        this->point = point;
+        this->missionOrder = missionOrder;
+    };
+    void changeMissionType(char newMission)
+    {
+        missionType = newMission;
     }
     double get_x()
     {
@@ -98,6 +146,14 @@ public:
     char get_missionType()
     {
         return missionType;
+    }
+    int get_point()
+    {
+        return point;
+    }
+    int get_missionOrder()
+    {
+        return missionOrder;
     }
 };
 
@@ -142,13 +198,14 @@ double startMissionTime;
 geometry_msgs::PoseStamped next_target;
 geometry_msgs::Pose2D next_correction;
 
-vector<mission> mission_List;
+vector<Path> path_List;
+vector<missionPoint> mission_List;
 vector<int> missionTime_correct_Type;
 vector<double> missionTime_correct_Num;
 
 // Function Define
 
-void correctMissionTime(char missionC) // Create Rules for mission Wait Time
+void correctMissionTime(int missionC) // Create Rules for mission Wait Time
 {
     for (size_t i = 0; i < missionTime_correct_Type.size(); i++)
     {
@@ -197,41 +254,41 @@ public:
     {
         if (msg->data && moving)
         {
-            if (goal_num == mission_List.size() - 1 && mission_List[goal_num].get_missionType() == 'X')
+            if (goal_num == path_List.size() - 1 && path_List[goal_num].get_pathType() != 0 && mission_List[path_List[goal_num].get_pathType() - 1].get_missionType() == 'X')
             {
                 now_Status++;
             }
             else
             {
                 moving = false;
-                if (mission_List[goal_num].get_missionType() == 'X')
+                if (path_List[goal_num].get_pathType() != 0 && mission_List[path_List[goal_num].get_pathType() - 1].get_missionType() == 'X')
                 {
                     mission_num++;
                     goal_num++;
-                    while (mission_List[goal_num].get_missionType() == '0')
+                    while (path_List[goal_num].get_pathType() == 0)
                     {
                         goal_num++;
                     }
-                    next_target.pose.position.x = mission_List[goal_num].get_x();
-                    next_target.pose.position.y = mission_List[goal_num].get_y();
-                    next_target.pose.orientation.z = mission_List[goal_num].get_z();
-                    next_target.pose.orientation.w = mission_List[goal_num].get_w();
+                    next_target.pose.position.x = path_List[goal_num].get_x();
+                    next_target.pose.position.y = path_List[goal_num].get_y();
+                    next_target.pose.orientation.z = path_List[goal_num].get_z();
+                    next_target.pose.orientation.w = path_List[goal_num].get_w();
                     _target.publish(next_target);
                     moving = true;
-                    ROS_INFO("Moving to x:[%f] y:[%f]", mission_List[goal_num].get_x(), mission_List[goal_num].get_y());
+                    ROS_INFO("Moving to x:[%f] y:[%f]", path_List[goal_num].get_x(), path_List[goal_num].get_y());
                     cout << endl;
                 }
                 else
                 {
                     doing = true;
                     std_msgs::Char mm;
-                    mm.data = mission_List[goal_num].get_missionType();
+                    mm.data = mission_List[path_List[goal_num].get_pathType() - 1].get_missionType();
                     _arm.publish(mm);
-                    ROS_INFO("Doing Mission Now... [ %c ]", mission_List[goal_num].get_missionType());
+                    ROS_INFO("Doing Mission Now... [ %c ]", mm.data);
                     cout << endl;
                     startMissionTime = ros::Time::now().toSec();
                     nh.getParam("/mission_waitTime", mission_waitTime);
-                    correctMissionTime(mission_List[goal_num].get_missionType());
+                    correctMissionTime(path_List[goal_num].get_pathType());
                 }
             }
         }
@@ -247,12 +304,12 @@ public:
         while (1)
         {
             geometry_msgs::PoseStamped next;
-            next.pose.position.x = mission_List[mission_num].get_x();
-            next.pose.position.y = mission_List[mission_num].get_y();
-            next.pose.orientation.z = mission_List[mission_num].get_z();
-            next.pose.orientation.w = mission_List[mission_num].get_w();
+            next.pose.position.x = path_List[mission_num].get_x();
+            next.pose.position.y = path_List[mission_num].get_y();
+            next.pose.orientation.z = path_List[mission_num].get_z();
+            next.pose.orientation.w = path_List[mission_num].get_w();
             res.plan.poses.push_back(next);
-            if (mission_List[mission_num].get_missionType() == '0')
+            if (path_List[mission_num].get_pathType() == 0)
             {
                 mission_num++;
             }
@@ -266,10 +323,16 @@ public:
 
     bool start_callback(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
     {
-        run_state = 1;
-        now_Status = 1;
-        mission_num = 0;
-        goal_num = 0;
+        if (now_Status > 1)
+        {
+            now_Status = 1;
+            mission_num = 0;
+            goal_num = 0;
+        }
+        else
+        {
+            run_state = 1;
+        }
         return true;
     }
 
@@ -346,10 +409,17 @@ int main(int argc, char **argv)
 
                 // Script Reading
 
-                cout << endl;
-                inFile.open(packagePath + "/include/scriptSmall.csv");
-                cout << "<< scriptSmall.csv >> ";
+                double next_x;
+                double next_y;
+                double next_z;
+                double next_w;
+                char next_m;
+                int next_p;
+                int next_o;
 
+                cout << endl;
+                inFile.open(packagePath + "/include/missionPoint.csv");
+                cout << "<< missionPoint.csv >> ";
                 if (inFile.fail())
                 {
                     cout << "Could Not Open !" << endl;
@@ -358,14 +428,7 @@ int main(int argc, char **argv)
                 {
                     cout << "Open Successfully !" << endl;
                 }
-
                 cout << endl;
-
-                double next_x;
-                double next_y;
-                double next_z;
-                double next_w;
-                char next_m;
                 while (getline(inFile, line))
                 {
                     istringstream sin(line);
@@ -385,13 +448,86 @@ int main(int argc, char **argv)
                     next_w = atof(field.c_str());
                     // cout << next_w << " ";
 
-                    getline(sin, field);
+                    getline(sin, field, ',');
                     const char *cstr = field.c_str();
                     char b = *cstr;
                     next_m = b;
-                    // cout << b << endl;
-                    mission nextMission(next_x, next_y, next_z, next_w, next_m);
-                    mission_List.push_back(nextMission);
+                    // cout << next_m << " ";
+
+                    getline(sin, field, ',');
+                    next_p = atoi(field.c_str());
+                    // cout << next_p << " ";
+
+                    getline(sin, field, ',');
+                    next_o = atoi(field.c_str());
+                    // cout << next_o << " ";
+
+                    missionPoint nextPoint(next_x, next_y, next_z, next_w, next_m, next_p, next_o);
+                    mission_List.push_back(nextPoint);
+                }
+                inFile.close();
+
+                inFile.open(packagePath + "/include/scriptSmall.csv");
+                cout << "<< scriptSmall.csv >> ";
+                if (inFile.fail())
+                {
+                    cout << "Could Not Open !" << endl;
+                }
+                else
+                {
+                    cout << "Open Successfully !" << endl;
+                }
+                cout << endl;
+                while (getline(inFile, line))
+                {
+                    istringstream sin(line);
+
+                    getline(sin, field, ',');
+                    next_o = atoi(field.c_str());
+                    // cout << next_o << " ";
+
+                    if (next_o)
+                    {
+                        next_x = mission_List[next_o - 1].get_x();
+                        next_y = mission_List[next_o - 1].get_y();
+                        next_z = mission_List[next_o - 1].get_z();
+                        next_w = mission_List[next_o - 1].get_w();
+                        next_m = next_o;
+                    }
+                    else
+                    {
+                        getline(sin, field, ',');
+                        next_x = atof(field.c_str());
+                        // cout << next_x << " ";
+
+                        getline(sin, field, ',');
+                        next_y = atof(field.c_str());
+                        // cout << next_y << " ";
+
+                        getline(sin, field, ',');
+                        next_z = atof(field.c_str());
+                        // cout << next_z << " ";
+
+                        getline(sin, field, ',');
+                        next_w = atof(field.c_str());
+                        // cout << next_w << " ";
+
+                        next_m = '0';
+                    }
+
+                    // cout << next_m << endl;
+
+                    if (side_state == 1)
+                    {
+                        Path nextMission(next_x, next_y, next_z, next_w, next_m);
+                        path_List.push_back(nextMission);
+                    }
+                    else if (side_state == 2)
+                    {
+                        Path nextMission(next_x, 3 - next_y, -next_z, next_w, next_m);
+                        path_List.push_back(nextMission);
+                    }
+                    // cout << next_x << " " << next_y << " " << next_z << " " << next_w << " " << next_m << endl;
                 }
 
                 mainClass.nh.getParam("/mission_waitTime", mission_waitTime);
@@ -412,24 +548,24 @@ int main(int argc, char **argv)
                 {
                     now_Status++;
                     run_state = 0;
-                    if (mission_List.size() == 0)
+                    if (path_List.size() == 0)
                     {
                         now_Status++;
                     }
                     else
                     {
                         initialTime = ros::Time::now();
-                        while (mission_List[goal_num].get_missionType() == '0')
+                        while (path_List[goal_num].get_pathType() == 0)
                         {
                             goal_num++;
                         }
-                        next_target.pose.position.x = mission_List[goal_num].get_x();
-                        next_target.pose.position.y = mission_List[goal_num].get_y();
-                        next_target.pose.orientation.z = mission_List[goal_num].get_z();
-                        next_target.pose.orientation.w = mission_List[goal_num].get_w();
+                        next_target.pose.position.x = path_List[goal_num].get_x();
+                        next_target.pose.position.y = path_List[goal_num].get_y();
+                        next_target.pose.orientation.z = path_List[goal_num].get_z();
+                        next_target.pose.orientation.w = path_List[goal_num].get_w();
                         mainClass._target.publish(next_target);
                         moving = true;
-                        ROS_INFO("Moving to x:[%f] y:[%f]", mission_List[goal_num].get_x(), mission_List[goal_num].get_y());
+                        ROS_INFO("Moving to x:[%f] y:[%f]", path_List[goal_num].get_x(), path_List[goal_num].get_y());
                         cout << endl;
                     }
                 }
@@ -448,19 +584,18 @@ int main(int argc, char **argv)
 
                 if (moving && !doing)
                 {
-                    // ROS_INFO("Moving Now...");
-                    // ROS_INFO("Position at x:[%f], y:[%f], z:[%f], w:[%f]", position_x, position_y, orientation_z, orientation_w);
+                    // Moving to Taget Point
                 }
                 else if (doing && !moving)
                 {
                     if (ros::Time::now().toSec() - startMissionTime < mission_waitTime)
                     {
-                        // cout << "Doing Mission Now... [ " << mission_List[goal_num].get_missionType() << " ]" << endl;
+                        // Doing Mission Wait Time
                     }
                     else
                     {
                         doing = false;
-                        if (goal_num == mission_List.size() - 1)
+                        if (goal_num == path_List.size() - 1)
                         {
                             now_Status++;
                         }
@@ -468,17 +603,17 @@ int main(int argc, char **argv)
                         {
                             mission_num++;
                             goal_num++;
-                            while (mission_List[goal_num].get_missionType() == '0')
+                            while (path_List[goal_num].get_pathType() == 0)
                             {
                                 goal_num++;
                             }
-                            next_target.pose.position.x = mission_List[goal_num].get_x();
-                            next_target.pose.position.y = mission_List[goal_num].get_y();
-                            next_target.pose.orientation.z = mission_List[goal_num].get_z();
-                            next_target.pose.orientation.w = mission_List[goal_num].get_w();
+                            next_target.pose.position.x = path_List[goal_num].get_x();
+                            next_target.pose.position.y = path_List[goal_num].get_y();
+                            next_target.pose.orientation.z = path_List[goal_num].get_z();
+                            next_target.pose.orientation.w = path_List[goal_num].get_w();
                             mainClass._target.publish(next_target);
                             moving = true;
-                            ROS_INFO("Moving to x:[%f] y:[%f]", mission_List[goal_num].get_x(), mission_List[goal_num].get_y());
+                            ROS_INFO("Moving to x:[%f] y:[%f]", path_List[goal_num].get_x(), path_List[goal_num].get_y());
                             cout << endl;
                         }
                     }
