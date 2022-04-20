@@ -194,6 +194,7 @@ int now_Mode = 1;
 bool moving = false;
 bool doing = false;
 bool finishMission = false;
+bool setChassisParam = false;
 
 double position_x;
 double position_y;
@@ -305,6 +306,18 @@ public:
                     next_target.pose.position.y = path_List[goal_num].get_y();
                     next_target.pose.orientation.z = path_List[goal_num].get_z();
                     next_target.pose.orientation.w = path_List[goal_num].get_w();
+                    if (setChassisParam)
+                    {
+                        nh.setParam("xy_tolerance", 0.02);
+                        nh.setParam("theta_tolerance", 0.03);
+                        setChassisParam = false;
+                    }
+                    if (getMissionChar(path_List[goal_num].get_pathType() == 'X'))
+                    {
+                        nh.setParam("xy_tolerance", 0.03);
+                        nh.setParam("theta_tolerance", 0.05);
+                        setChassisParam = true;
+                    }
                     _target.publish(next_target);
                     moving = true;
                     ROS_INFO("Moving to x:[%f] y:[%f]", path_List[goal_num].get_x(), path_List[goal_num].get_y());
@@ -363,6 +376,7 @@ public:
             moving = false;
             doing = false;
             finishMission = false;
+            setChassisParam = false;
             total_Point = 0;
         }
         else
@@ -620,6 +634,18 @@ int main(int argc, char **argv)
                         next_target.pose.position.y = path_List[goal_num].get_y();
                         next_target.pose.orientation.z = path_List[goal_num].get_z();
                         next_target.pose.orientation.w = path_List[goal_num].get_w();
+                        if (setChassisParam)
+                        {
+                            mainClass.nh.setParam("xy_tolerance", 0.02);
+                            mainClass.nh.setParam("theta_tolerance", 0.03);
+                            setChassisParam = false;
+                        }
+                        if (getMissionChar(path_List[goal_num].get_pathType() == 'X'))
+                        {
+                            mainClass.nh.setParam("xy_tolerance", 0.03);
+                            mainClass.nh.setParam("theta_tolerance", 0.05);
+                            setChassisParam = true;
+                        }
                         mainClass._target.publish(next_target);
                         moving = true;
                         ROS_INFO("Moving to x:[%f] y:[%f]", path_List[goal_num].get_x(), path_List[goal_num].get_y());
@@ -669,6 +695,18 @@ int main(int argc, char **argv)
                             next_target.pose.position.y = path_List[goal_num].get_y();
                             next_target.pose.orientation.z = path_List[goal_num].get_z();
                             next_target.pose.orientation.w = path_List[goal_num].get_w();
+                            if (setChassisParam)
+                            {
+                                mainClass.nh.setParam("xy_tolerance", 0.02);
+                                mainClass.nh.setParam("theta_tolerance", 0.03);
+                                setChassisParam = false;
+                            }
+                            if (getMissionChar(path_List[goal_num].get_pathType() == 'X'))
+                            {
+                                mainClass.nh.setParam("xy_tolerance", 0.03);
+                                mainClass.nh.setParam("theta_tolerance", 0.05);
+                                setChassisParam = true;
+                            }
                             mainClass._target.publish(next_target);
                             moving = true;
                             ROS_INFO("Moving to x:[%f] y:[%f]", path_List[goal_num].get_x(), path_List[goal_num].get_y());
