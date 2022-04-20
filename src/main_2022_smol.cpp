@@ -211,6 +211,9 @@ vector<Path> path_List;
 vector<missionPoint> mission_List;
 vector<int> missionTime_correct_Type;
 vector<double> missionTime_correct_Num;
+vector<int> set_Chassis_Param_Type;
+vector<double> set_Chassis_Param_xy;
+vector<double> set_Chassis_Param_theta;
 
 // Function Define
 
@@ -223,7 +226,23 @@ void correctMissionTime(int missionC) // Create Rules for mission Wait Time
             mission_waitTime = missionTime_correct_Num[i];
             break;
         }
+        mission_waitTime = waitTime_Normal;
     }
+}
+
+void setChassisParameter(ros::NodeHandle *nh, int missionC)
+{
+    for (size_t i = 0; i < set_Chassis_Param_Type.size(); i++)
+    {
+        if (missionC == set_Chassis_Param_Type[i])
+        {
+            nh->setParam("xy_tolerance", set_Chassis_Param_xy[i]);
+            nh->setParam("theta_tolerance", set_Chassis_Param_theta[i]);
+            break;
+        }
+    }
+    nh->setParam("xy_tolerance", 0.02);
+    nh->setParam("theta_tolerance", 0.03);
 }
 
 char getMissionChar(int num)
@@ -306,18 +325,7 @@ public:
                     next_target.pose.position.y = path_List[goal_num].get_y();
                     next_target.pose.orientation.z = path_List[goal_num].get_z();
                     next_target.pose.orientation.w = path_List[goal_num].get_w();
-                    if (setChassisParam)
-                    {
-                        nh.setParam("xy_tolerance", 0.02);
-                        nh.setParam("theta_tolerance", 0.03);
-                        setChassisParam = false;
-                    }
-                    if (getMissionChar(path_List[goal_num].get_pathType() == 'X'))
-                    {
-                        nh.setParam("xy_tolerance", 0.03);
-                        nh.setParam("theta_tolerance", 0.05);
-                        setChassisParam = true;
-                    }
+                    setChassisParameter(&nh, path_List[goal_num].get_pathType());
                     _target.publish(next_target);
                     moving = true;
                     ROS_INFO("Moving to x:[%f] y:[%f]", path_List[goal_num].get_x(), path_List[goal_num].get_y());
@@ -332,7 +340,6 @@ public:
                     ROS_INFO("Doing Mission Now... [ %c ]", mm.data);
                     cout << endl;
                     startMissionTime = ros::Time::now().toSec();
-                    mission_waitTime = waitTime_Normal;
                     correctMissionTime(path_List[goal_num].get_pathType());
                 }
             }
@@ -604,6 +611,9 @@ int main(int argc, char **argv)
                 mainClass.nh.getParam("/mission_waitTime", waitTime_Normal);
                 mainClass.nh.param("/missionTime_correct_Type", missionTime_correct_Type, missionTime_correct_Type);
                 mainClass.nh.param("/missionTime_correct_Num", missionTime_correct_Num, missionTime_correct_Num);
+                mainClass.nh.param("/set_Chassis_Param_Type", set_Chassis_Param_Type, set_Chassis_Param_Type);
+                mainClass.nh.param("/set_Chassis_Param_xy", set_Chassis_Param_xy, set_Chassis_Param_xy);
+                mainClass.nh.param("/set_Chassis_Param_theta", set_Chassis_Param_theta, set_Chassis_Param_theta);
 
                 for (size_t i = 0; i < missionTime_correct_Type.size(); i++)
                 {
@@ -634,18 +644,7 @@ int main(int argc, char **argv)
                         next_target.pose.position.y = path_List[goal_num].get_y();
                         next_target.pose.orientation.z = path_List[goal_num].get_z();
                         next_target.pose.orientation.w = path_List[goal_num].get_w();
-                        if (setChassisParam)
-                        {
-                            mainClass.nh.setParam("xy_tolerance", 0.02);
-                            mainClass.nh.setParam("theta_tolerance", 0.03);
-                            setChassisParam = false;
-                        }
-                        if (getMissionChar(path_List[goal_num].get_pathType() == 'X'))
-                        {
-                            mainClass.nh.setParam("xy_tolerance", 0.03);
-                            mainClass.nh.setParam("theta_tolerance", 0.05);
-                            setChassisParam = true;
-                        }
+                        setChassisParameter(&mainClass.nh, path_List[goal_num].get_pathType());
                         mainClass._target.publish(next_target);
                         moving = true;
                         ROS_INFO("Moving to x:[%f] y:[%f]", path_List[goal_num].get_x(), path_List[goal_num].get_y());
@@ -695,18 +694,7 @@ int main(int argc, char **argv)
                             next_target.pose.position.y = path_List[goal_num].get_y();
                             next_target.pose.orientation.z = path_List[goal_num].get_z();
                             next_target.pose.orientation.w = path_List[goal_num].get_w();
-                            if (setChassisParam)
-                            {
-                                mainClass.nh.setParam("xy_tolerance", 0.02);
-                                mainClass.nh.setParam("theta_tolerance", 0.03);
-                                setChassisParam = false;
-                            }
-                            if (getMissionChar(path_List[goal_num].get_pathType() == 'X'))
-                            {
-                                mainClass.nh.setParam("xy_tolerance", 0.03);
-                                mainClass.nh.setParam("theta_tolerance", 0.05);
-                                setChassisParam = true;
-                            }
+                            setChassisParameter(&mainClass.nh, path_List[goal_num].get_pathType());
                             mainClass._target.publish(next_target);
                             moving = true;
                             ROS_INFO("Moving to x:[%f] y:[%f]", path_List[goal_num].get_x(), path_List[goal_num].get_y());
