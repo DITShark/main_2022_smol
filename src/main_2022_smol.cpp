@@ -212,8 +212,8 @@ vector<missionPoint> mission_List;
 vector<int> missionTime_correct_Type;
 vector<double> missionTime_correct_Num;
 vector<int> set_Chassis_Param_Type;
-vector<double> set_Chassis_Param_xy;
-vector<double> set_Chassis_Param_theta;
+vector<double> set_Chassis_Param_xy_tolerance;
+vector<double> set_Chassis_Param_theta_tolerance;
 
 // Function Define
 
@@ -236,8 +236,8 @@ void setChassisParameter(ros::NodeHandle *nh, int missionC)
     {
         if (missionC == set_Chassis_Param_Type[i])
         {
-            nh->setParam("xy_tolerance", set_Chassis_Param_xy[i]);
-            nh->setParam("theta_tolerance", set_Chassis_Param_theta[i]);
+            nh->setParam("xy_tolerance", set_Chassis_Param_xy_tolerance[i]);
+            nh->setParam("theta_tolerance", set_Chassis_Param_theta_tolerance[i]);
             break;
         }
     }
@@ -612,8 +612,8 @@ int main(int argc, char **argv)
                 mainClass.nh.param("/missionTime_correct_Type", missionTime_correct_Type, missionTime_correct_Type);
                 mainClass.nh.param("/missionTime_correct_Num", missionTime_correct_Num, missionTime_correct_Num);
                 mainClass.nh.param("/set_Chassis_Param_Type", set_Chassis_Param_Type, set_Chassis_Param_Type);
-                mainClass.nh.param("/set_Chassis_Param_xy", set_Chassis_Param_xy, set_Chassis_Param_xy);
-                mainClass.nh.param("/set_Chassis_Param_theta", set_Chassis_Param_theta, set_Chassis_Param_theta);
+                mainClass.nh.param("/set_Chassis_Param_xy_tolerance", set_Chassis_Param_xy_tolerance, set_Chassis_Param_xy_tolerance);
+                mainClass.nh.param("/set_Chassis_Param_theta_tolerance", set_Chassis_Param_theta_tolerance, set_Chassis_Param_theta_tolerance);
 
                 for (size_t i = 0; i < missionTime_correct_Type.size(); i++)
                 {
