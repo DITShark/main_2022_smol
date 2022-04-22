@@ -421,7 +421,7 @@ public:
 int main(int argc, char **argv)
 {
     // ROS initial
-    ros::init(argc, argv, "Main_Node_beta");
+    ros::init(argc, argv, "Main_Node_smol");
 
     // Node Handling Class Initialize
 
@@ -615,6 +615,7 @@ int main(int argc, char **argv)
                 mainClass.nh.param("/set_Chassis_Param_xy_tolerance", set_Chassis_Param_xy_tolerance, set_Chassis_Param_xy_tolerance);
                 mainClass.nh.param("/set_Chassis_Param_theta_tolerance", set_Chassis_Param_theta_tolerance, set_Chassis_Param_theta_tolerance);
 
+                cout << endl;
                 for (size_t i = 0; i < missionTime_correct_Type.size(); i++)
                 {
                     ROS_INFO("Mission Num.%2d Correct to %.1f secs", missionTime_correct_Type[i], missionTime_correct_Num[i]);
