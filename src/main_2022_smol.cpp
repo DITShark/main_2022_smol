@@ -568,11 +568,11 @@ int main(int argc, char **argv)
                     mission_List.push_back(nextPoint);
                 }
 
-                // for (size_t i = 0; i < mission_List.size(); i++)
-                // {
-                //     mission_List[i].printOut();
-                // }
-                // cout << endl;
+                for (size_t i = 0; i < mission_List.size(); i++)
+                {
+                    mission_List[i].printOut();
+                }
+                cout << endl;
 
                 inFile.close(); // --------------------------------------------- Change CSV Line ---------------------------------------------
 
@@ -638,10 +638,10 @@ int main(int argc, char **argv)
                     // cout << next_x << " " << next_y << " " << next_z << " " << next_w << " " << next_m << endl;
                 }
 
-                // for (size_t i = 0; i < path_List.size(); i++)
-                // {
-                //     path_List[i].printOut();
-                // }
+                for (size_t i = 0; i < path_List.size(); i++)
+                {
+                    path_List[i].printOut();
+                }
 
                 mainClass.nh.getParam("/mission_waitTime", waitTime_Normal);
                 mainClass.nh.param("/missionTime_correct_Type", missionTime_correct_Type, missionTime_correct_Type);
