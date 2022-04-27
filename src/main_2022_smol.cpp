@@ -173,6 +173,18 @@ public:
     {
         return missionOrder;
     }
+    int get_vl53_hand()
+    {
+        return whichHand;
+    }
+    int get_vl53_left()
+    {
+        return vl53Left;
+    }
+    int get_vl53_right()
+    {
+        return vl53Right;
+    }
 };
 
 // Program Adjustment
@@ -253,6 +265,16 @@ void setChassisParameter(ros::NodeHandle *nh, int missionC)
     }
     nh->setParam("xy_tolerance", 0.02);
     nh->setParam("theta_tolerance", 0.03);
+}
+
+void setVL53Update(int missionC, geometry_msgs::PoseStamped *next)
+{
+    if (mission_List[missionC - 1].get_vl53_hand() != -1)
+    {
+        next->pose.position.z = mission_List[missionC - 1].get_vl53_hand();
+        next->pose.orientation.x = mission_List[missionC - 1].get_vl53_left();
+        next->pose.orientation.y = mission_List[missionC - 1].get_vl53_right();
+    }
 }
 
 char getMissionChar(int num)
@@ -336,6 +358,7 @@ public:
                     next_target.pose.orientation.z = path_List[goal_num].get_z();
                     next_target.pose.orientation.w = path_List[goal_num].get_w();
                     setChassisParameter(&nh, path_List[goal_num].get_pathType());
+                    setVL53Update(path_List[goal_num].get_pathType(), &next_target);
                     _target.publish(next_target);
                     moving = true;
                     ROS_INFO("Moving to x:[%f] y:[%f]", path_List[goal_num].get_x(), path_List[goal_num].get_y());
@@ -564,6 +587,7 @@ int main(int argc, char **argv)
 
                         nextPoint.update_VL53(next_vl1, next_vl2, next_vl3);
                     }
+                    // cout << endl;
 
                     mission_List.push_back(nextPoint);
                 }
@@ -681,6 +705,7 @@ int main(int argc, char **argv)
                         next_target.pose.orientation.z = path_List[goal_num].get_z();
                         next_target.pose.orientation.w = path_List[goal_num].get_w();
                         setChassisParameter(&mainClass.nh, path_List[goal_num].get_pathType());
+                        setVL53Update(path_List[goal_num].get_pathType(), &next_target);
                         mainClass._target.publish(next_target);
                         moving = true;
                         ROS_INFO("Moving to x:[%f] y:[%f]", path_List[goal_num].get_x(), path_List[goal_num].get_y());
@@ -731,6 +756,7 @@ int main(int argc, char **argv)
                             next_target.pose.orientation.z = path_List[goal_num].get_z();
                             next_target.pose.orientation.w = path_List[goal_num].get_w();
                             setChassisParameter(&mainClass.nh, path_List[goal_num].get_pathType());
+                            setVL53Update(path_List[goal_num].get_pathType(), &next_target);
                             mainClass._target.publish(next_target);
                             moving = true;
                             ROS_INFO("Moving to x:[%f] y:[%f]", path_List[goal_num].get_x(), path_List[goal_num].get_y());
