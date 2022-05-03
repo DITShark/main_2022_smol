@@ -177,11 +177,11 @@ public:
     {
         return whichHand;
     }
-    int get_vl53_left()
+    double get_vl53_left()
     {
         return vl53Left;
     }
-    int get_vl53_right()
+    double get_vl53_right()
     {
         return vl53Right;
     }
@@ -227,6 +227,7 @@ double startMissionTime;
 int total_Point = 0;
 
 geometry_msgs::PoseStamped next_target;
+std_msgs::Float32MultiArray next_docking_goal;
 geometry_msgs::Pose2D next_correction;
 
 vector<Path> path_List;
@@ -267,14 +268,12 @@ void setChassisParameter(ros::NodeHandle *nh, int missionC)
     nh->setParam("theta_tolerance", 0.03);
 }
 
-void setVL53Update(int missionC, geometry_msgs::PoseStamped *next)
+void setVL53Update(int missionC, std_msgs::Float32MultiArray *next)
 {
-    if (mission_List[missionC - 1].get_vl53_hand() != -1)
-    {
-        next->pose.position.z = mission_List[missionC - 1].get_vl53_hand();
-        next->pose.orientation.x = mission_List[missionC - 1].get_vl53_left();
-        next->pose.orientation.y = mission_List[missionC - 1].get_vl53_right();
-    }
+    next->data.clear();
+    next->data.push_back(mission_List[missionC - 1].get_vl53_hand());
+    next->data.push_back(mission_List[missionC - 1].get_vl53_left());
+    next->data.push_back(mission_List[missionC - 1].get_vl53_right());
 }
 
 char getMissionChar(int num)
@@ -357,9 +356,12 @@ public:
                     next_target.pose.position.y = path_List[goal_num].get_y();
                     next_target.pose.orientation.z = path_List[goal_num].get_z();
                     next_target.pose.orientation.w = path_List[goal_num].get_w();
+                    next_target.header.frame_id = "map";
+                    next_target.header.stamp = ros::Time::now();
                     setChassisParameter(&nh, path_List[goal_num].get_pathType());
-                    setVL53Update(path_List[goal_num].get_pathType(), &next_target);
+                    setVL53Update(path_List[goal_num].get_pathType(), &next_docking_goal);
                     _target.publish(next_target);
+                    _docking.publish(next_docking_goal);
                     moving = true;
                     ROS_INFO("Moving to x:[%f] y:[%f]", path_List[goal_num].get_x(), path_List[goal_num].get_y());
                     cout << endl;
@@ -385,7 +387,10 @@ public:
 
     void feedback_callback(const std_msgs::Int64::ConstPtr &msg)
     {
-        mission_waitTime = 0;
+        if (feedback_activate)
+        {
+            mission_waitTime = 0;
+        }
     }
 
     bool givePath_callback(nav_msgs::GetPlan::Request &req, nav_msgs::GetPlan::Response &res)
@@ -434,11 +439,12 @@ public:
     ros::NodeHandle nh;
 
     // ROS Topics Publishers
-    ros::Publisher _target = nh.advertise<geometry_msgs::PoseStamped>("target", 1000); // Publish goal to controller
-    ros::Publisher _StopOrNot = nh.advertise<std_msgs::Bool>("Stopornot", 1000);       // Publish emergency state to controller
-    ros::Publisher _arm = nh.advertise<std_msgs::Char>("arm_go_where", 1000);          // Publish mission to mission
-    ros::Publisher _time = nh.advertise<std_msgs::Float32>("total_Time", 1000);        // Publish total Time
-    ros::Publisher _point = nh.advertise<std_msgs::Int32>("total_Point", 1000);        // Publish total Point
+    ros::Publisher _target = nh.advertise<geometry_msgs::PoseStamped>("target", 1000);         // Publish goal to controller
+    ros::Publisher _StopOrNot = nh.advertise<std_msgs::Bool>("Stopornot", 1000);               // Publish emergency state to controller
+    ros::Publisher _arm = nh.advertise<std_msgs::Char>("arm_go_where", 1000);                  // Publish mission to mission
+    ros::Publisher _time = nh.advertise<std_msgs::Float32>("total_Time", 1000);                // Publish total Time
+    ros::Publisher _point = nh.advertise<std_msgs::Int32>("total_Point", 1000);                // Publish total Point
+    ros::Publisher _docking = nh.advertise<std_msgs::Float32MultiArray>("docking_goal", 1000); // Publish vl53 goal
 
     // ROS Topics Subscribers
     // ros::Subscriber _globalFilter = nh.subscribe<nav_msgs::Odometry>("global_filter", 1000, &mainProgram::position_callback, this);               // Get position from localization
@@ -578,11 +584,11 @@ int main(int argc, char **argv)
                     if (next_vl1 != -1)
                     {
                         getline(sin, field, ',');
-                        next_vl2 = atoi(field.c_str());
+                        next_vl2 = atof(field.c_str());
                         // cout << next_vl2 << " ";
 
                         getline(sin, field, ',');
-                        next_vl3 = atoi(field.c_str());
+                        next_vl3 = atof(field.c_str());
                         // cout << next_vl3 << " ";
 
                         nextPoint.update_VL53(next_vl1, next_vl2, next_vl3);
@@ -668,6 +674,7 @@ int main(int argc, char **argv)
                 }
 
                 mainClass.nh.getParam("/mission_waitTime", waitTime_Normal);
+                mainClass.nh.getParam("/feedback_activate", feedback_activate);
                 mainClass.nh.param("/missionTime_correct_Type", missionTime_correct_Type, missionTime_correct_Type);
                 mainClass.nh.param("/missionTime_correct_Num", missionTime_correct_Num, missionTime_correct_Num);
                 mainClass.nh.param("/set_Chassis_Param_Type", set_Chassis_Param_Type, set_Chassis_Param_Type);
@@ -704,9 +711,12 @@ int main(int argc, char **argv)
                         next_target.pose.position.y = path_List[goal_num].get_y();
                         next_target.pose.orientation.z = path_List[goal_num].get_z();
                         next_target.pose.orientation.w = path_List[goal_num].get_w();
+                        next_target.header.frame_id = "map";
+                        next_target.header.stamp = ros::Time::now();
                         setChassisParameter(&mainClass.nh, path_List[goal_num].get_pathType());
-                        setVL53Update(path_List[goal_num].get_pathType(), &next_target);
+                        setVL53Update(path_List[goal_num].get_pathType(), &next_docking_goal);
                         mainClass._target.publish(next_target);
+                        mainClass._docking.publish(next_docking_goal);
                         moving = true;
                         ROS_INFO("Moving to x:[%f] y:[%f]", path_List[goal_num].get_x(), path_List[goal_num].get_y());
                         cout << endl;
@@ -755,9 +765,12 @@ int main(int argc, char **argv)
                             next_target.pose.position.y = path_List[goal_num].get_y();
                             next_target.pose.orientation.z = path_List[goal_num].get_z();
                             next_target.pose.orientation.w = path_List[goal_num].get_w();
+                            next_target.header.frame_id = "map";
+                            next_target.header.stamp = ros::Time::now();
                             setChassisParameter(&mainClass.nh, path_List[goal_num].get_pathType());
-                            setVL53Update(path_List[goal_num].get_pathType(), &next_target);
+                            setVL53Update(path_List[goal_num].get_pathType(), &next_docking_goal);
                             mainClass._target.publish(next_target);
+                            mainClass._docking.publish(next_docking_goal);
                             moving = true;
                             ROS_INFO("Moving to x:[%f] y:[%f]", path_List[goal_num].get_x(), path_List[goal_num].get_y());
                             cout << endl;
