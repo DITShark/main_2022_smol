@@ -6,6 +6,7 @@
 #include <std_msgs/Int32.h>
 #include <std_msgs/Int64.h>
 #include <std_msgs/Float32.h>
+#include <std_msgs/Float32MultiArray.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/GetPlan.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -207,6 +208,7 @@ int side_state; // 1 for yellow , 2 for purple
 int run_state = 0;
 double mission_waitTime;
 double waitTime_Normal;
+bool feedback_activate;
 
 int mission_num = 0;
 int goal_num = 0;
