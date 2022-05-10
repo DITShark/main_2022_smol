@@ -469,6 +469,7 @@ void setParamMission(int which, ros::NodeHandle *nh, ros::ServiceClient *cli)
 
 void setMissionTime(int which)
 {
+    mission_waitTime = waitTime_Normal;
     for (size_t i = 0; i < param_List.size() - 1; i++)
     {
         if (param_List[i].get_missionNum() == which)
@@ -476,7 +477,6 @@ void setMissionTime(int which)
             param_List[i].correctMissionTime();
             break;
         }
-        mission_waitTime = waitTime_Normal;
     }
 }
 
