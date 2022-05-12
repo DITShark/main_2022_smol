@@ -1,11 +1,13 @@
 <launch>
-        <param name="/side_state" type="int" value="1" />
-        <param name="/mission_waitTime" type="double" value="1" />
-        <param name="/file_name_mission" type="string" value="missionPoint.csv" />
-        <param name="/file_name_path" type="string" value="scriptSmall.csv" />
-        <param name="/file_name_param" type="string" value="paramSetSmol.csv" />
-        <param name="/feedback_activate" type="bool" value="false" />
-    <node name="Main_Node_Smol" pkg="main_2022_smol" type="main_2022_smol" output="screen">
-    <!-- <node name="Main_Node_Smol" pkg="main_2022_smol" type="main_2022_smol_Emerge" output="screen"> -->
-    </node>
+    <group ns="Pico">    
+            <param name="side_state" type="int" value="1" />
+            <param name="mission_waitTime" type="double" value="1" />
+            <param name="file_name_mission" type="string" value="missionPoint.csv" />
+            <param name="file_name_path" type="string" value="scriptSmall.csv" />
+            <param name="file_name_param" type="string" value="paramSetSmol.csv" />
+            <param name="feedback_activate" type="bool" value="false" />
+        <node name="Main_Node_Smol" pkg="main_2022_smol" type="main_2022_smol" output="screen">
+        <!-- <node name="Main_Node_Smol" pkg="main_2022_smol" type="main_2022_smol_Emerge" output="screen"> -->
+        </node>
+    </group>
 </launch>

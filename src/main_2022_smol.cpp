@@ -126,6 +126,8 @@ private:
     int whichHand = -1;
     double vl53Left = -1;
     double vl53Right = -1;
+    double vl53_x_offset = -1;
+    double vl53_y_offset = -1;
 
 public:
     missionPoint(int missionOrder, double x, double y, double z, double w, char missionType, int point)
@@ -142,15 +144,17 @@ public:
     {
         missionType = newMission;
     }
-    void update_VL53(int hand, double left_dis, double right_dis)
+    void update_VL53(int hand, double left_dis, double right_dis, double x_offset, double y_offset)
     {
         whichHand = hand;
         vl53Left = left_dis;
         vl53Right = right_dis;
+        vl53_x_offset = x_offset;
+        vl53_y_offset = y_offset;
     }
     void printOut()
     {
-        cout << missionOrder << " " << x << " " << y << " " << z << " " << w << " " << missionType << " " << point << endl;
+        cout << missionOrder << " " << x << " " << y << " " << z << " " << w << " " << missionType << " " << point << " " << whichHand << " " << vl53Left << " " << vl53Right << " " << vl53_x_offset << " " << vl53_y_offset << endl;
     }
     double get_x()
     {
@@ -191,6 +195,14 @@ public:
     double get_vl53_right()
     {
         return vl53Right;
+    }
+    double get_vl53_x_offset()
+    {
+        return vl53_x_offset;
+    }
+    double get_vl53_y_offset()
+    {
+        return vl53_y_offset;
     }
 };
 
@@ -266,43 +278,43 @@ public:
     {
         if (linear_max_v != -1)
         {
-            nh->setParam("/path_tracker/linear_max_velocity", linear_max_v);
+            nh->setParam("path_tracker/linear_max_velocity", linear_max_v);
         }
         if (linear_accelaration != -1)
         {
-            nh->setParam("/path_tracker/linear_accelaration", linear_accelaration);
+            nh->setParam("path_tracker/linear_accelaration", linear_accelaration);
         }
         if (linear_kp != -1)
         {
-            nh->setParam("/path_tracker/linear_kp", linear_kp);
+            nh->setParam("path_tracker/linear_kp", linear_kp);
         }
         if (linear_break_ratio != -1)
         {
-            nh->setParam("/path_tracker/linear_break_ratio", linear_break_ratio);
+            nh->setParam("path_tracker/linear_break_ratio", linear_break_ratio);
         }
         if (angular_max_v != -1)
         {
-            nh->setParam("/path_tracker/angular_max_velocity", angular_max_v);
+            nh->setParam("path_tracker/angular_max_velocity", angular_max_v);
         }
         if (angular_accelaration != -1)
         {
-            nh->setParam("/path_tracker/angular_accelaration", angular_accelaration);
+            nh->setParam("path_tracker/angular_accelaration", angular_accelaration);
         }
         if (angular_kp != -1)
         {
-            nh->setParam("/path_tracker/angular_kp", angular_kp);
+            nh->setParam("path_tracker/angular_kp", angular_kp);
         }
         if (angular_break_distance != -1)
         {
-            nh->setParam("/path_tracker/angular_break_distance", angular_break_distance);
+            nh->setParam("path_tracker/angular_break_distance", angular_break_distance);
         }
         if (xy_tolerance != -1)
         {
-            nh->setParam("/path_tracker/xy_tolerance", xy_tolerance);
+            nh->setParam("path_tracker/xy_tolerance", xy_tolerance);
         }
         if (theta_tolerance != -1)
         {
-            nh->setParam("/path_tracker/theta_tolerance", theta_tolerance);
+            nh->setParam("path_tracker/theta_tolerance", theta_tolerance);
         }
         std_srvs::Empty ssrv;
         if (cli->call(ssrv))
@@ -355,6 +367,7 @@ double armAngleGreen = 0;
 double armAngleRed = 0;
 
 int total_Point = 0;
+int add_Point = 0;
 
 geometry_msgs::PoseStamped next_target;
 std_msgs::Float32MultiArray next_docking_goal;
@@ -379,6 +392,8 @@ void setVL53Update(int missionC, std_msgs::Float32MultiArray *next)
     next->data.push_back(mission_List[missionC - 1].get_vl53_hand());
     next->data.push_back(mission_List[missionC - 1].get_vl53_left());
     next->data.push_back(mission_List[missionC - 1].get_vl53_right());
+    next->data.push_back(mission_List[missionC - 1].get_vl53_x_offset());
+    next->data.push_back(mission_List[missionC - 1].get_vl53_y_offset());
 }
 
 char getMissionChar(int num)
@@ -561,16 +576,17 @@ public:
         }
     }
 
-    void resistance_callback(const std_msgs::Int32::ConstPtr &msg)
-    {
-    }
-
     void feedback_callback(const std_msgs::Int64::ConstPtr &msg)
     {
         if (feedback_activate)
         {
             mission_waitTime = 0;
         }
+    }
+
+    void point_callback(const std_msgs::Int32::ConstPtr &msg)
+    {
+        total_Point += msg->data;
     }
 
     bool givePath_callback(nav_msgs::GetPlan::Request &req, nav_msgs::GetPlan::Response &res)
@@ -583,6 +599,7 @@ public:
             next.pose.position.y = path_List[mission_num].get_y();
             next.pose.orientation.z = path_List[mission_num].get_z();
             next.pose.orientation.w = path_List[mission_num].get_w();
+            // cout << "Path : " << next.pose.position.x << " " << next.pose.position.y << " " << next.pose.orientation.z << " " << next.pose.orientation.w << " " << endl;
             res.plan.poses.push_back(next);
             if (path_List[mission_num].get_pathType() == 0)
             {
@@ -600,18 +617,25 @@ public:
     {
         if (now_Status > 1)
         {
-            now_Status = 1;
+            now_Status = 0;
             mission_num = 0;
             goal_num = 0;
             moving = false;
             doing = false;
             finishMission = false;
             total_Point = 0;
+            add_Point = 0;
         }
         else
         {
             run_state = 1;
         }
+
+        std_srvs::Empty srv;
+        if (_teraStart.call(srv))
+        {
+        }
+
         return true;
     }
 
@@ -622,7 +646,7 @@ public:
     ros::Publisher _StopOrNot = nh.advertise<std_msgs::Bool>("Stopornot", 1000);               // Publish emergency state to controller
     ros::Publisher _arm = nh.advertise<std_msgs::Char>("arm_go_where", 1000);                  // Publish mission to mission
     ros::Publisher _time = nh.advertise<std_msgs::Float32>("total_Time", 1000);                // Publish total Time
-    ros::Publisher _point = nh.advertise<std_msgs::Int32>("total_Point", 1000);                // Publish total Point
+    ros::Publisher _pubpoint = nh.advertise<std_msgs::Int32>("/total_Point", 1000);            // Publish total Point
     ros::Publisher _docking = nh.advertise<std_msgs::Float32MultiArray>("docking_goal", 1000); // Publish vl53 goal
 
     // ROS Topics Subscribers
@@ -630,15 +654,16 @@ public:
     ros::Subscriber _globalFilter = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>("ekf_pose", 1000, &mainProgram::position_callback, this); // Get position from localization Lu
     ros::Subscriber _haveObsatcles = nh.subscribe<std_msgs::Bool>("have_obstacles", 1000, &mainProgram::emergency_callback, this);                   // Get emergency state from lidar
     ros::Subscriber _FinishOrNot = nh.subscribe<std_msgs::Bool>("Finishornot", 1000, &mainProgram::moving_callback, this);                           // Get finish moving state from controller
-    ros::Subscriber _resistance = nh.subscribe<std_msgs::Int32>("resistance", 1000, &mainProgram::resistance_callback, this);                        // Get resistor from mission
     ros::Subscriber _feedback = nh.subscribe<std_msgs::Int64>("feedback", 1000, &mainProgram::feedback_callback, this);                              // Get feedfback from mission
+    ros::Subscriber _subpoint = nh.subscribe<std_msgs::Int32>("/add_Point", 1000, &mainProgram::point_callback, this);
 
     // ROS Service Server
-    ros::ServiceServer _MissionPath = nh.advertiseService("MissionPath", &mainProgram::givePath_callback, this); // Path giving Service
-    ros::ServiceServer _RunState = nh.advertiseService("startRunning", &mainProgram::start_callback, this);      // Start Signal Service
+    ros::ServiceServer _MissionPath = nh.advertiseService("MissionPath", &mainProgram::givePath_callback, this);  // Path giving Service
+    ros::ServiceServer _RunState = nh.advertiseService("/Pico_startRunning", &mainProgram::start_callback, this); // Start Signal Service
 
     // ROS Service Client
-    ros::ServiceClient _params = nh.serviceClient<std_srvs::Empty>("/path_tracker/params"); // Param Adjustment Service
+    ros::ServiceClient _params = nh.serviceClient<std_srvs::Empty>("path_tracker/params");   // Param Adjustment Service
+    ros::ServiceClient _teraStart = nh.serviceClient<std_srvs::Empty>("/Tera_startRunning"); // Call Tera startRunning Service
 };
 
 // Main Program
@@ -667,9 +692,9 @@ int main(int argc, char **argv)
     string filename_mission;
     string filename_path;
     string filename_param;
-    mainClass.nh.getParam("/file_name_mission", filename_mission);
-    mainClass.nh.getParam("/file_name_path", filename_path);
-    mainClass.nh.getParam("/file_name_param", filename_param);
+    mainClass.nh.getParam("file_name_mission", filename_mission);
+    mainClass.nh.getParam("file_name_path", filename_path);
+    mainClass.nh.getParam("file_name_param", filename_param);
     int waitCount = 0;
 
     while (ros::ok())
@@ -681,7 +706,7 @@ int main(int argc, char **argv)
             {
             case STRATEGY:
 
-                mainClass.nh.getParam("/side_state", side_state);
+                mainClass.nh.getParam("side_state", side_state);
 
                 if (side_state == 1)
                 {
@@ -710,6 +735,8 @@ int main(int argc, char **argv)
                 int next_vl1;
                 double next_vl2;
                 double next_vl3;
+                double next_vl4;
+                double next_vl5;
 
                 cout << endl;
                 inFile.open(packagePath + "/include/" + filename_mission);
@@ -774,7 +801,15 @@ int main(int argc, char **argv)
                         next_vl3 = atof(field.c_str());
                         // cout << next_vl3 << " ";
 
-                        nextPoint.update_VL53(next_vl1, next_vl2, next_vl3);
+                        getline(sin, field, ',');
+                        next_vl4 = atof(field.c_str());
+                        // cout << next_vl4 << " ";
+
+                        getline(sin, field, ',');
+                        next_vl5 = atof(field.c_str());
+                        // cout << next_vl5 << " ";
+
+                        nextPoint.update_VL53(next_vl1, next_vl2, next_vl3, next_vl4, next_vl5);
                     }
                     // cout << endl;
 
@@ -922,25 +957,25 @@ int main(int argc, char **argv)
                     else
                     {
                         double next_param;
-                        mainClass.nh.getParam("/path_tracker/linear_max_velocity", next_param);
+                        mainClass.nh.getParam("path_tracker/linear_max_velocity", next_param);
                         path_tracker_paramDefault.push_back(next_param);
-                        mainClass.nh.getParam("/path_tracker/linear_acceleration", next_param);
+                        mainClass.nh.getParam("path_tracker/linear_acceleration", next_param);
                         path_tracker_paramDefault.push_back(next_param);
-                        mainClass.nh.getParam("/path_tracker/linear_kp", next_param);
+                        mainClass.nh.getParam("path_tracker/linear_kp", next_param);
                         path_tracker_paramDefault.push_back(next_param);
-                        mainClass.nh.getParam("/path_tracker/linear_brake_distance_ratio", next_param);
+                        mainClass.nh.getParam("path_tracker/linear_brake_distance_ratio", next_param);
                         path_tracker_paramDefault.push_back(next_param);
-                        mainClass.nh.getParam("/path_tracker/angular_max_velocity", next_param);
+                        mainClass.nh.getParam("path_tracker/angular_max_velocity", next_param);
                         path_tracker_paramDefault.push_back(next_param);
-                        mainClass.nh.getParam("/path_tracker/angular_acceleration", next_param);
+                        mainClass.nh.getParam("path_tracker/angular_acceleration", next_param);
                         path_tracker_paramDefault.push_back(next_param);
-                        mainClass.nh.getParam("/path_tracker/angular_kp", next_param);
+                        mainClass.nh.getParam("path_tracker/angular_kp", next_param);
                         path_tracker_paramDefault.push_back(next_param);
-                        mainClass.nh.getParam("/path_tracker/angular_brake_distance", next_param);
+                        mainClass.nh.getParam("path_tracker/angular_brake_distance", next_param);
                         path_tracker_paramDefault.push_back(next_param);
-                        mainClass.nh.getParam("/path_tracker/xy_tolerance", next_param);
+                        mainClass.nh.getParam("path_tracker/xy_tolerance", next_param);
                         path_tracker_paramDefault.push_back(next_param);
-                        mainClass.nh.getParam("/path_tracker/theta_tolerance", next_param);
+                        mainClass.nh.getParam("path_tracker/theta_tolerance", next_param);
                         path_tracker_paramDefault.push_back(next_param);
                         paramSetMission defaultMission(-1);
                         param_List.push_back(defaultMission);
@@ -973,7 +1008,7 @@ int main(int argc, char **argv)
                 {
                     if (waitCount++ > 100)
                     {
-                        ROS_INFO("Waiting Now...");
+                        ROS_INFO("Pico Waiting Now...");
                         cout << endl;
                         waitCount = 0;
                     }
@@ -1024,8 +1059,13 @@ int main(int argc, char **argv)
                         }
                     }
                 }
+
                 timePublish.data = ros::Time::now().toSec() - initialTime.toSec();
                 mainClass._time.publish(timePublish);
+
+                pointPublish.data = total_Point;
+                mainClass._pubpoint.publish(pointPublish);
+
                 break;
 
             case FINISH:
@@ -1037,7 +1077,7 @@ int main(int argc, char **argv)
 
                     pointPublish.data = total_Point;
                     ROS_INFO("Total Point: %d", pointPublish.data);
-                    mainClass._point.publish(pointPublish);
+                    mainClass._pubpoint.publish(pointPublish);
 
                     cout << endl;
                     ROS_INFO("Finish All Mission");
