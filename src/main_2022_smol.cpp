@@ -38,6 +38,14 @@ enum Mode
     NORMAL
 };
 
+enum resistanceState
+{
+    FIRST_SQUARE = 0,
+    THIRD_SQUARE,
+    FOURTH_SQUARE,
+    FIFTH_SQUARE
+};
+
 // Global Variable Define Before Class Define
 
 double mission_waitTime;
@@ -124,10 +132,10 @@ private:
     char missionType;
     int point;
     int whichHand = -1;
-    double vl53Left = -1;
-    double vl53Right = -1;
-    double vl53_x_offset = -1;
-    double vl53_y_offset = -1;
+    double vl53Left = 0;
+    double vl53Right = 0;
+    double vl53_x_offset = 0;
+    double vl53_y_offset = 0;
 
 public:
     missionPoint(int missionOrder, double x, double y, double z, double w, char missionType, int point)
@@ -282,7 +290,7 @@ public:
         }
         if (linear_accelaration != -1)
         {
-            nh->setParam("path_tracker/linear_accelaration", linear_accelaration);
+            nh->setParam("path_tracker/linear_acceleration", linear_accelaration);
         }
         if (linear_kp != -1)
         {
@@ -290,7 +298,7 @@ public:
         }
         if (linear_break_ratio != -1)
         {
-            nh->setParam("path_tracker/linear_break_ratio", linear_break_ratio);
+            nh->setParam("path_tracker/linear_brake_distance_ratio", linear_break_ratio);
         }
         if (angular_max_v != -1)
         {
@@ -298,7 +306,7 @@ public:
         }
         if (angular_accelaration != -1)
         {
-            nh->setParam("path_tracker/angular_accelaration", angular_accelaration);
+            nh->setParam("path_tracker/angular_acceleration", angular_accelaration);
         }
         if (angular_kp != -1)
         {
@@ -306,7 +314,7 @@ public:
         }
         if (angular_break_distance != -1)
         {
-            nh->setParam("path_tracker/angular_break_distance", angular_break_distance);
+            nh->setParam("path_tracker/angular_brake_distance", angular_break_distance);
         }
         if (xy_tolerance != -1)
         {
@@ -352,6 +360,7 @@ int mission_num = 0;
 int goal_num = 0;
 int now_Status = 0;
 int now_Mode = 1;
+int resistance_state = 0;
 
 bool moving = false;
 bool doing = false;
@@ -376,6 +385,7 @@ geometry_msgs::Pose2D next_correction;
 vector<Path> path_List;
 vector<missionPoint> mission_List;
 vector<paramSetMission> param_List;
+vector<int> delete_List;
 
 tf::Quaternion bblue(0, 0, 0.237214, 0.971457);
 tf::Quaternion ggreen(0, 0, 0.9259258, 0.388819);
@@ -386,38 +396,40 @@ double machineAngleRed = tf::getYaw(rred);
 
 // Function Define
 
+missionPoint getMission(int num)
+{
+    for (size_t i = 0; i < mission_List.size(); i++)
+    {
+        if (num == mission_List[i].get_missionOrder())
+        {
+            return mission_List[i];
+        }
+    }
+}
+
 void setVL53Update(int missionC, std_msgs::Float32MultiArray *next)
 {
     next->data.clear();
-    next->data.push_back(mission_List[missionC - 1].get_vl53_hand());
-    next->data.push_back(mission_List[missionC - 1].get_vl53_left());
-    next->data.push_back(mission_List[missionC - 1].get_vl53_right());
-    next->data.push_back(mission_List[missionC - 1].get_vl53_x_offset());
-    next->data.push_back(mission_List[missionC - 1].get_vl53_y_offset());
+    next->data.push_back(getMission(missionC).get_vl53_hand());
+    next->data.push_back(getMission(missionC).get_vl53_left());
+    next->data.push_back(getMission(missionC).get_vl53_right());
+    next->data.push_back(getMission(missionC).get_vl53_x_offset());
+    next->data.push_back(getMission(missionC).get_vl53_y_offset());
 }
 
 char getMissionChar(int num)
 {
-    for (size_t i = 0; i < mission_List.size(); i++)
-    {
-        if (num == mission_List[i].get_missionOrder())
-        {
-            return mission_List[i].get_missionType();
-        }
-    }
-    return '#';
+    return getMission(num).get_missionType();
 }
 
-int getMissionPoint(int num)
+void updateMissionChar(int num, char newMission)
 {
-    for (size_t i = 0; i < mission_List.size(); i++)
-    {
-        if (num == mission_List[i].get_missionOrder())
-        {
-            return mission_List[i].get_point();
-        }
-    }
-    return 0;
+    getMission(num).changeMissionType(newMission);
+}
+
+int getMissionPoints(int num)
+{
+    return getMission(num).get_point();
 }
 
 double setAngleTurn(char type)
@@ -470,7 +482,7 @@ pair<double, double> changePurpleAngle(double ang_z, double ang_w, char which)
     return returnAngle;
 }
 
-void setParamMission(int which, ros::NodeHandle *nh, ros::ServiceClient *cli)
+void setMissionParam(int which, ros::NodeHandle *nh, ros::ServiceClient *cli)
 {
     param_List[param_List.size() - 1].setParam(nh, cli);
     for (size_t i = 0; i < param_List.size() - 1; i++)
@@ -478,6 +490,7 @@ void setParamMission(int which, ros::NodeHandle *nh, ros::ServiceClient *cli)
         if (param_List[i].get_missionNum() == which)
         {
             param_List[i].setParam(nh, cli);
+            break;
         }
     }
 }
@@ -491,6 +504,27 @@ void setMissionTime(int which)
         {
             param_List[i].correctMissionTime();
             break;
+        }
+    }
+}
+
+void checkDeleteList()
+{
+    while (1)
+    {
+        if (delete_List.size() == 0)
+        {
+            break;
+        }
+        for (size_t i = 0; i < delete_List.size(); i++)
+        {
+            if (goal_num == delete_List[i])
+            {
+                mission_num = goal_num;
+                goal_num++;
+                delete_List.erase(delete_List.begin() + i);
+                break;
+            }
         }
     }
 }
@@ -547,16 +581,17 @@ public:
                     {
                         goal_num++;
                     }
+                    checkDeleteList();
                     next_target.pose.position.x = path_List[goal_num].get_x();
                     next_target.pose.position.y = path_List[goal_num].get_y();
                     next_target.pose.orientation.z = path_List[goal_num].get_z();
                     next_target.pose.orientation.w = path_List[goal_num].get_w();
                     next_target.header.frame_id = "map";
                     next_target.header.stamp = ros::Time::now();
-                    setParamMission(path_List[goal_num].get_pathType(), &nh, &_params);
+                    setMissionParam(path_List[goal_num].get_pathType(), &nh, &_params);
                     setVL53Update(path_List[goal_num].get_pathType(), &next_docking_goal);
-                    _target.publish(next_target);
                     _docking.publish(next_docking_goal);
+                    _target.publish(next_target);
                     moving = true;
                     ROS_INFO("Going to Mission No.%d : Moving to x:[%.3f] y:[%.3f]", path_List[goal_num].get_pathType(), path_List[goal_num].get_x(), path_List[goal_num].get_y());
                     cout << endl;
@@ -567,13 +602,89 @@ public:
                     std_msgs::Char mm;
                     mm.data = getMissionChar(path_List[goal_num].get_pathType());
                     _arm.publish(mm);
-                    ROS_INFO("Doing Mission Now... [ %c ]", mm.data);
+                    ROS_INFO("Mission Type Publish : [ %c ]", mm.data);
                     cout << endl;
                     startMissionTime = ros::Time::now().toSec();
                     setMissionTime(path_List[goal_num].get_pathType());
                 }
             }
         }
+    }
+
+    void resistance_callback(const std_msgs::Int64::ConstPtr &msg) // Team Purple 470 ohm / Team Yellow 1000 ohm / Red Cross 4700 ohm
+    {
+        // switch (resistance_state)
+        // {
+        // case FIRST_SQUARE:
+        //     if (msg->data == 0)
+        //     {
+        //         resistance_state = 1;
+        //     }
+        //     else if ((msg->data == 470 && side_state == 2) || (msg->data == 1000 && side_state == 1))
+        //     {
+        //         delete_List.push_back(goal_num + 2);
+        //         delete_List.push_back(goal_num + 7);
+        //         resistance_state = 2;
+        //     }
+        //     else if (msg->data == 4700)
+        //     {
+        //         updateMissionChar(path_List[goal_num + 2].get_pathType(), 'P');
+        //         delete_List.push_back(goal_num + 7);
+        //         resistance_state = 2;
+        //     }
+        //     break;
+        // case THIRD_SQUARE:
+        //     if (msg->data == 0)
+        //     {
+        //         resistance_state = 2;
+        //         delete_List.push_back(goal_num + 5);
+        //     }
+        //     else if ((msg->data == 470 && side_state == 2) || (msg->data == 1000 && side_state == 1))
+        //     {
+        //         resistance_state = 2;
+        //         delete_List.push_back(goal_num + 5);
+        //     }
+        //     else if (msg->data == 4700)
+        //     {
+        //         resistance_state = 2;
+        //         updateMissionChar(path_List[goal_num + 5].get_pathType(), 'P');
+        //     }
+        //     break;
+        // case FOURTH_SQUARE:
+        //     if (msg->data == 0)
+        //     {
+        //         resistance_state = 3;
+        //     }
+        //     else if ((msg->data == 470 && side_state == 2) || (msg->data == 1000 && side_state == 1))
+        //     {
+        //         resistance_state = 4;
+        //         delete_List.push_back(goal_num + 1);
+        //         delete_List.push_back(goal_num + 2);
+        //     }
+        //     else if ((msg->data == 470 && side_state == 1) || (msg->data == 1000 && side_state == 2))
+        //     {
+        //         resistance_state = 4;
+        //         updateMissionChar(path_List[goal_num + 1].get_pathType(), 'P');
+        //         delete_List.push_back(goal_num + 3);
+        //     }
+        //     break;
+        // case FIFTH_SQUARE:
+        //     if (msg->data == 0)
+        //     {
+        //         resistance_state = 4;
+        //     }
+        //     else if ((msg->data == 470 && side_state == 2) || (msg->data == 1000 && side_state == 1))
+        //     {
+        //         resistance_state = 4;
+        //         delete_List.push_back(goal_num + 2);
+        //     }
+        //     else if ((msg->data == 470 && side_state == 1) || (msg->data == 1000 && side_state == 2))
+        //     {
+        //         resistance_state = 4;
+        //         delete_List.push_back(goal_num + 1);
+        //     }
+        //     break;
+        // }
     }
 
     void feedback_callback(const std_msgs::Int64::ConstPtr &msg)
@@ -599,7 +710,6 @@ public:
             next.pose.position.y = path_List[mission_num].get_y();
             next.pose.orientation.z = path_List[mission_num].get_z();
             next.pose.orientation.w = path_List[mission_num].get_w();
-            // cout << "Path : " << next.pose.position.x << " " << next.pose.position.y << " " << next.pose.orientation.z << " " << next.pose.orientation.w << " " << endl;
             res.plan.poses.push_back(next);
             if (path_List[mission_num].get_pathType() == 0)
             {
@@ -625,6 +735,7 @@ public:
             finishMission = false;
             total_Point = 0;
             add_Point = 0;
+            resistance_state = 0;
         }
         else
         {
@@ -655,7 +766,8 @@ public:
     ros::Subscriber _haveObsatcles = nh.subscribe<std_msgs::Bool>("have_obstacles", 1000, &mainProgram::emergency_callback, this);                   // Get emergency state from lidar
     ros::Subscriber _FinishOrNot = nh.subscribe<std_msgs::Bool>("Finishornot", 1000, &mainProgram::moving_callback, this);                           // Get finish moving state from controller
     ros::Subscriber _feedback = nh.subscribe<std_msgs::Int64>("feedback", 1000, &mainProgram::feedback_callback, this);                              // Get feedfback from mission
-    ros::Subscriber _subpoint = nh.subscribe<std_msgs::Int32>("/add_Point", 1000, &mainProgram::point_callback, this);
+    ros::Subscriber _subpoint = nh.subscribe<std_msgs::Int32>("/add_Point", 1000, &mainProgram::point_callback, this);                               // Get Tera's Point
+    ros::Subscriber _resistance = nh.subscribe<std_msgs::Int64>("how_much_resistance", 1000, &mainProgram::resistance_callback, this);               // Get Resistance from mission
 
     // ROS Service Server
     ros::ServiceServer _MissionPath = nh.advertiseService("MissionPath", &mainProgram::givePath_callback, this);  // Path giving Service
@@ -845,13 +957,13 @@ int main(int argc, char **argv)
 
                     if (next_o)
                     {
-                        next_x = mission_List[next_o - 1].get_x();
+                        next_x = getMission(next_o).get_x();
                         // cout << next_x << " ";
-                        next_y = mission_List[next_o - 1].get_y();
+                        next_y = getMission(next_o).get_y();
                         // cout << next_y << " ";
-                        next_z = mission_List[next_o - 1].get_z();
+                        next_z = getMission(next_o).get_z();
                         // cout << next_z << " ";
-                        next_w = mission_List[next_o - 1].get_w();
+                        next_w = getMission(next_o).get_w();
                         // cout << next_w << endl;
                     }
                     else
@@ -880,7 +992,7 @@ int main(int argc, char **argv)
                     }
                     else if (side_state == 2)
                     {
-                        Path nextMission(next_x, 3 - next_y, changePurpleAngle(next_z, next_w, getMissionChar(next_o - 1)).first, changePurpleAngle(next_z, next_w, getMissionChar(next_o - 1)).second, next_o);
+                        Path nextMission(next_x, 3 - next_y, changePurpleAngle(next_z, next_w, getMissionChar(next_o)).first, changePurpleAngle(next_z, next_w, getMissionChar(next_o)).second, next_o);
                         path_List.push_back(nextMission);
                     }
                     // cout << next_x << " " << next_y << " " << next_z << " " << next_w << " " << next_m << endl;
@@ -939,8 +1051,8 @@ int main(int argc, char **argv)
                 }
                 cout << endl;
 
-                mainClass.nh.getParam("/mission_waitTime", waitTime_Normal);
-                mainClass.nh.getParam("/feedback_activate", feedback_activate);
+                mainClass.nh.getParam("mission_waitTime", waitTime_Normal);
+                mainClass.nh.getParam("feedback_activate", feedback_activate);
 
                 now_Status++;
                 break;
@@ -989,16 +1101,17 @@ int main(int argc, char **argv)
                         {
                             goal_num++;
                         }
+                        checkDeleteList();
                         next_target.pose.position.x = path_List[goal_num].get_x();
                         next_target.pose.position.y = path_List[goal_num].get_y();
                         next_target.pose.orientation.z = path_List[goal_num].get_z();
                         next_target.pose.orientation.w = path_List[goal_num].get_w();
                         next_target.header.frame_id = "map";
                         next_target.header.stamp = ros::Time::now();
-                        setParamMission(path_List[goal_num].get_pathType(), &mainClass.nh, &mainClass._params);
+                        setMissionParam(path_List[goal_num].get_pathType(), &mainClass.nh, &mainClass._params);
                         setVL53Update(path_List[goal_num].get_pathType(), &next_docking_goal);
-                        mainClass._target.publish(next_target);
                         mainClass._docking.publish(next_docking_goal);
+                        mainClass._target.publish(next_target);
                         moving = true;
                         ROS_INFO("Going to Mission No.%d : Moving to x:[%.3f] y:[%.3f]", path_List[goal_num].get_pathType(), path_List[goal_num].get_x(), path_List[goal_num].get_y());
                         cout << endl;
@@ -1030,7 +1143,9 @@ int main(int argc, char **argv)
                     else
                     {
                         doing = false;
-                        total_Point += getMissionPoint(path_List[goal_num].get_pathType());
+
+                        total_Point += getMissionPoints(path_List[goal_num].get_pathType());
+
                         if (goal_num == path_List.size() - 1)
                         {
                             now_Status++;
@@ -1043,16 +1158,17 @@ int main(int argc, char **argv)
                             {
                                 goal_num++;
                             }
+                            checkDeleteList();
                             next_target.pose.position.x = path_List[goal_num].get_x();
                             next_target.pose.position.y = path_List[goal_num].get_y();
                             next_target.pose.orientation.z = path_List[goal_num].get_z();
                             next_target.pose.orientation.w = path_List[goal_num].get_w();
                             next_target.header.frame_id = "map";
                             next_target.header.stamp = ros::Time::now();
-                            setParamMission(path_List[goal_num].get_pathType(), &mainClass.nh, &mainClass._params);
+                            setMissionParam(path_List[goal_num].get_pathType(), &mainClass.nh, &mainClass._params);
                             setVL53Update(path_List[goal_num].get_pathType(), &next_docking_goal);
-                            mainClass._target.publish(next_target);
                             mainClass._docking.publish(next_docking_goal);
+                            mainClass._target.publish(next_target);
                             moving = true;
                             ROS_INFO("Going to Mission No.%d : Moving to x:[%.3f] y:[%.3f]", path_List[goal_num].get_pathType(), path_List[goal_num].get_x(), path_List[goal_num].get_y());
                             cout << endl;
