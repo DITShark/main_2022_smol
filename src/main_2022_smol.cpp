@@ -510,9 +510,10 @@ void setMissionTime(int which)
 
 void checkDeleteList()
 {
+    bool checkFinish = false;
     while (1)
     {
-        if (delete_List.size() == 0)
+        if (delete_List.size() == 0 || checkFinish)
         {
             break;
         }
@@ -524,6 +525,10 @@ void checkDeleteList()
                 goal_num++;
                 delete_List.erase(delete_List.begin() + i);
                 break;
+            }
+            if (i == delete_List.size() - 1)
+            {
+                checkFinish = true;
             }
         }
     }
@@ -593,7 +598,7 @@ public:
                     _docking.publish(next_docking_goal);
                     _target.publish(next_target);
                     moving = true;
-                    ROS_INFO("Going to Mission No.%d : Moving to x:[%.3f] y:[%.3f]", path_List[goal_num].get_pathType(), path_List[goal_num].get_x(), path_List[goal_num].get_y());
+                    ROS_INFO("[%d] Going to Mission No.%d : Moving to x:[%.3f] y:[%.3f]", goal_num, path_List[goal_num].get_pathType(), path_List[goal_num].get_x(), path_List[goal_num].get_y());
                     cout << endl;
                 }
                 else
@@ -613,78 +618,92 @@ public:
 
     void resistance_callback(const std_msgs::Int64::ConstPtr &msg) // Team Purple 470 ohm / Team Yellow 1000 ohm / Red Cross 4700 ohm
     {
-        // switch (resistance_state)
-        // {
-        // case FIRST_SQUARE:
-        //     if (msg->data == 0)
-        //     {
-        //         resistance_state = 1;
-        //     }
-        //     else if ((msg->data == 470 && side_state == 2) || (msg->data == 1000 && side_state == 1))
-        //     {
-        //         delete_List.push_back(goal_num + 2);
-        //         delete_List.push_back(goal_num + 7);
-        //         resistance_state = 2;
-        //     }
-        //     else if (msg->data == 4700)
-        //     {
-        //         updateMissionChar(path_List[goal_num + 2].get_pathType(), 'P');
-        //         delete_List.push_back(goal_num + 7);
-        //         resistance_state = 2;
-        //     }
-        //     break;
-        // case THIRD_SQUARE:
-        //     if (msg->data == 0)
-        //     {
-        //         resistance_state = 2;
-        //         delete_List.push_back(goal_num + 5);
-        //     }
-        //     else if ((msg->data == 470 && side_state == 2) || (msg->data == 1000 && side_state == 1))
-        //     {
-        //         resistance_state = 2;
-        //         delete_List.push_back(goal_num + 5);
-        //     }
-        //     else if (msg->data == 4700)
-        //     {
-        //         resistance_state = 2;
-        //         updateMissionChar(path_List[goal_num + 5].get_pathType(), 'P');
-        //     }
-        //     break;
-        // case FOURTH_SQUARE:
-        //     if (msg->data == 0)
-        //     {
-        //         resistance_state = 3;
-        //     }
-        //     else if ((msg->data == 470 && side_state == 2) || (msg->data == 1000 && side_state == 1))
-        //     {
-        //         resistance_state = 4;
-        //         delete_List.push_back(goal_num + 1);
-        //         delete_List.push_back(goal_num + 2);
-        //     }
-        //     else if ((msg->data == 470 && side_state == 1) || (msg->data == 1000 && side_state == 2))
-        //     {
-        //         resistance_state = 4;
-        //         updateMissionChar(path_List[goal_num + 1].get_pathType(), 'P');
-        //         delete_List.push_back(goal_num + 3);
-        //     }
-        //     break;
-        // case FIFTH_SQUARE:
-        //     if (msg->data == 0)
-        //     {
-        //         resistance_state = 4;
-        //     }
-        //     else if ((msg->data == 470 && side_state == 2) || (msg->data == 1000 && side_state == 1))
-        //     {
-        //         resistance_state = 4;
-        //         delete_List.push_back(goal_num + 2);
-        //     }
-        //     else if ((msg->data == 470 && side_state == 1) || (msg->data == 1000 && side_state == 2))
-        //     {
-        //         resistance_state = 4;
-        //         delete_List.push_back(goal_num + 1);
-        //     }
-        //     break;
-        // }
+        switch (resistance_state)
+        {
+        case FIRST_SQUARE:
+            if (msg->data == 0)
+            {
+                ROS_INFO("FIRST_SQUARE - No");
+                resistance_state = 1;
+            }
+            else if ((msg->data == 470 && side_state == 2) || (msg->data == 1000 && side_state == 1))
+            {
+                ROS_INFO("FIRST_SQUARE - Our Side");
+                delete_List.push_back(goal_num + 2);
+                delete_List.push_back(goal_num + 7);
+                resistance_state = 2;
+            }
+            else if (msg->data == 4700)
+            {
+                ROS_INFO("FIRST_SQUARE - Red Cross");
+                updateMissionChar(path_List[goal_num + 2].get_pathType(), 'u');
+                delete_List.push_back(goal_num + 7);
+                resistance_state = 2;
+            }
+            break;
+        case THIRD_SQUARE:
+            if (msg->data == 0)
+            {
+                ROS_INFO("THIRD_SQUARE - No");
+                resistance_state = 2;
+                delete_List.push_back(goal_num + 5);
+            }
+            else if ((msg->data == 470 && side_state == 2) || (msg->data == 1000 && side_state == 1))
+            {
+                ROS_INFO("THIRD_SQUARE - Our Side");
+                resistance_state = 2;
+                delete_List.push_back(goal_num + 5);
+            }
+            else if (msg->data == 4700)
+            {
+                ROS_INFO("THIRD_SQUARE - Red Cross");
+                resistance_state = 2;
+                updateMissionChar(path_List[goal_num + 5].get_pathType(), 'u');
+            }
+            break;
+        case FOURTH_SQUARE:
+            if (msg->data == 0)
+            {
+                ROS_INFO("FOURTH_SQUARE - No");
+                resistance_state = 3;
+            }
+            else if ((msg->data == 470 && side_state == 2) || (msg->data == 1000 && side_state == 1))
+            {
+                ROS_INFO("FOURTH_SQUARE - Our Side");
+                resistance_state = 4;
+                delete_List.push_back(goal_num + 1);
+                delete_List.push_back(goal_num + 2);
+            }
+            else if ((msg->data == 470 && side_state == 1) || (msg->data == 1000 && side_state == 2))
+            {
+                ROS_INFO("FOURTH_SQUARE - Enemy Side");
+                resistance_state = 4;
+                updateMissionChar(path_List[goal_num + 1].get_pathType(), 'u');
+                delete_List.push_back(goal_num + 3);
+            }
+            break;
+        case FIFTH_SQUARE:
+            if (msg->data == 0)
+            {
+                ROS_INFO("FIFTH_SQUARE - No");
+                resistance_state = 4;
+            }
+            else if ((msg->data == 470 && side_state == 2) || (msg->data == 1000 && side_state == 1))
+            {
+                ROS_INFO("FIFTH_SQUARE - Our Side");
+                resistance_state = 4;
+                delete_List.push_back(goal_num + 2);
+            }
+            else if ((msg->data == 470 && side_state == 1) || (msg->data == 1000 && side_state == 2))
+            {
+                ROS_INFO("FIFTH_SQUARE - Enemy Side");
+                resistance_state = 4;
+                delete_List.push_back(goal_num + 1);
+            }
+            break;
+        }
+        mission_waitTime = 0;
+        cout << endl;
     }
 
     void feedback_callback(const std_msgs::Int64::ConstPtr &msg)
@@ -985,16 +1004,19 @@ int main(int argc, char **argv)
                         // cout << next_w << endl;
                     }
 
-                    if (side_state == 1)
-                    {
-                        Path nextMission(next_x, next_y, next_z, next_w, next_o);
-                        path_List.push_back(nextMission);
-                    }
-                    else if (side_state == 2)
-                    {
-                        Path nextMission(next_x, 3 - next_y, changePurpleAngle(next_z, next_w, getMissionChar(next_o)).first, changePurpleAngle(next_z, next_w, getMissionChar(next_o)).second, next_o);
-                        path_List.push_back(nextMission);
-                    }
+                    Path nextMission(next_x, next_y, next_z, next_w, next_o);
+                    path_List.push_back(nextMission);
+
+                    // if (side_state == 1)
+                    // {
+                    //     Path nextMission(next_x, next_y, next_z, next_w, next_o);
+                    //     path_List.push_back(nextMission);
+                    // }
+                    // else if (side_state == 2)
+                    // {
+                    //     Path nextMission(next_x, 3 - next_y, changePurpleAngle(next_z, next_w, getMissionChar(next_o)).first, changePurpleAngle(next_z, next_w, getMissionChar(next_o)).second, next_o);
+                    //     path_List.push_back(nextMission);
+                    // }
                     // cout << next_x << " " << next_y << " " << next_z << " " << next_w << " " << next_m << endl;
                 }
 
@@ -1113,7 +1135,7 @@ int main(int argc, char **argv)
                         mainClass._docking.publish(next_docking_goal);
                         mainClass._target.publish(next_target);
                         moving = true;
-                        ROS_INFO("Going to Mission No.%d : Moving to x:[%.3f] y:[%.3f]", path_List[goal_num].get_pathType(), path_List[goal_num].get_x(), path_List[goal_num].get_y());
+                        ROS_INFO("[%d] Going to Mission No.%d : Moving to x:[%.3f] y:[%.3f]", goal_num, path_List[goal_num].get_pathType(), path_List[goal_num].get_x(), path_List[goal_num].get_y());
                         cout << endl;
                     }
                 }
@@ -1170,7 +1192,7 @@ int main(int argc, char **argv)
                             mainClass._docking.publish(next_docking_goal);
                             mainClass._target.publish(next_target);
                             moving = true;
-                            ROS_INFO("Going to Mission No.%d : Moving to x:[%.3f] y:[%.3f]", path_List[goal_num].get_pathType(), path_List[goal_num].get_x(), path_List[goal_num].get_y());
+                            ROS_INFO("[%d] Going to Mission No.%d : Moving to x:[%.3f] y:[%.3f]", goal_num, path_List[goal_num].get_pathType(), path_List[goal_num].get_x(), path_List[goal_num].get_y());
                             cout << endl;
                         }
                     }
