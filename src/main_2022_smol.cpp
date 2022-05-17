@@ -361,9 +361,10 @@ int resistance_state = 0;
 
 bool moving = false;
 bool doing = false;
-bool finishMission = false;
+bool finish_mission = false;
 bool going_home = false;
 bool pid_closed = false;
+bool mission_success = false;
 
 double position_x;
 double position_y;
@@ -374,8 +375,9 @@ double armAngleBlue = 0;
 double armAngleGreen = 0;
 double armAngleRed = 0;
 
-int total_Point = 0;
-int add_Point = 0;
+int total_point = 0;
+int pico_point = 4;
+int add_point = 0;
 
 geometry_msgs::PoseStamped next_target;
 std_msgs::Float32MultiArray next_docking_goal;
@@ -756,12 +758,13 @@ public:
         if (feedback_activate)
         {
             mission_waitTime = 0;
+            mission_success = true;
         }
     }
 
     void point_callback(const std_msgs::Int32::ConstPtr &msg)
     {
-        total_Point += msg->data;
+        add_point = msg->data;
     }
 
     bool givePath_callback(nav_msgs::GetPlan::Request &req, nav_msgs::GetPlan::Response &res)
@@ -799,9 +802,10 @@ public:
             goal_num = 0;
             moving = false;
             doing = false;
-            finishMission = false;
-            total_Point = 0;
-            add_Point = 0;
+            finish_mission = false;
+            total_point = 0;
+            pico_point = 4;
+            add_point = 0;
             resistance_state = 0;
         }
         else
@@ -824,7 +828,7 @@ public:
     ros::Publisher _StopOrNot = nh.advertise<std_msgs::Bool>("Stopornot", 1000);               // Publish emergency state to controller
     ros::Publisher _arm = nh.advertise<std_msgs::Char>("arm_go_where", 1000);                  // Publish mission to mission
     ros::Publisher _time = nh.advertise<std_msgs::Float32>("total_Time", 1000);                // Publish total Time
-    ros::Publisher _pubpoint = nh.advertise<std_msgs::Int32>("/total_Point", 1000);            // Publish total Point
+    ros::Publisher _pubpoint = nh.advertise<std_msgs::Int32>("/total_point", 1000);            // Publish total Point
     ros::Publisher _docking = nh.advertise<std_msgs::Float32MultiArray>("docking_goal", 1000); // Publish vl53 goal
     ros::Publisher _shutdown = nh.advertise<std_msgs::Bool>("shutdown", 1000);                 // Publish turn off PID to base
 
@@ -861,7 +865,7 @@ int main(int argc, char **argv)
 
     // Main Node Update Frequency
 
-    ros::Rate rate(200);
+    ros::Rate rate(20);
 
     ifstream inFile;
     string value;
@@ -1190,7 +1194,7 @@ int main(int argc, char **argv)
                 }
                 else
                 {
-                    if (waitCount++ > 100)
+                    if (waitCount++ > 20)
                     {
                         ROS_INFO("Pico Waiting Now...");
                         cout << endl;
@@ -1215,7 +1219,11 @@ int main(int argc, char **argv)
                     {
                         doing = false;
 
-                        total_Point += getMissionPoints(path_List[goal_num].get_pathType());
+                        if (mission_success)
+                        {
+                            pico_point += getMissionPoints(path_List[goal_num].get_pathType());
+                            mission_success = false;
+                        }
 
                         if (goal_num == path_List.size() - 1)
                         {
@@ -1269,10 +1277,11 @@ int main(int argc, char **argv)
                 timePublish.data = ros::Time::now().toSec() - initialTime.toSec();
                 mainClass._time.publish(timePublish);
 
-                pointPublish.data = total_Point;
+                total_point = add_point + pico_point;
+                pointPublish.data = total_point;
                 mainClass._pubpoint.publish(pointPublish);
 
-                if (ros::Time::now().toSec() - initialTime.toSec() > 99.9)
+                if (ros::Time::now().toSec() - initialTime.toSec() > 99.85)
                 {
                     now_Status = FINISH;
                     ROS_INFO("Time Up ! Close All Things !");
@@ -1287,7 +1296,7 @@ int main(int argc, char **argv)
                 break;
 
             case FINISH:
-                if (!finishMission && ros::Time::now().toSec() - initialTime.toSec() > 99.85)
+                if (!finish_mission && ros::Time::now().toSec() - initialTime.toSec() > 99.85)
                 {
                     if (!pid_closed)
                     {
@@ -1301,14 +1310,19 @@ int main(int argc, char **argv)
                     ROS_INFO("Mission Time: %f", timePublish.data);
                     mainClass._time.publish(timePublish);
 
-                    pointPublish.data = total_Point;
+                    total_point = pico_point + add_point;
+                    pointPublish.data = total_point;
                     ROS_INFO("Total Point: %d", pointPublish.data);
                     mainClass._pubpoint.publish(pointPublish);
 
                     cout << endl;
                     ROS_INFO("Finish All Mission");
-                    finishMission = true;
+                    finish_mission = true;
                 }
+
+                total_point = pico_point + add_point;
+                pointPublish.data = total_point;
+                mainClass._pubpoint.publish(pointPublish);
 
                 break;
             }
