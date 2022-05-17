@@ -363,6 +363,7 @@ bool moving = false;
 bool doing = false;
 bool finishMission = false;
 bool going_home = false;
+bool pid_closed = false;
 
 double position_x;
 double position_y;
@@ -1271,21 +1272,30 @@ int main(int argc, char **argv)
                 pointPublish.data = total_Point;
                 mainClass._pubpoint.publish(pointPublish);
 
-                if (ros::Time::now().toSec() - initialTime.toSec() > 99.8)
+                if (ros::Time::now().toSec() - initialTime.toSec() > 99.9)
                 {
                     now_Status = FINISH;
                     ROS_INFO("Time Up ! Close All Things !");
                     cout << endl;
+
+                    std_msgs::Bool turnoff;
+                    turnoff.data = true;
+                    mainClass._shutdown.publish(turnoff);
+                    pid_closed = true;
                 }
 
                 break;
 
             case FINISH:
-                if (!finishMission)
+                if (!finishMission && ros::Time::now().toSec() - initialTime.toSec() > 99.85)
                 {
-                    std_msgs::Bool turnoff;
-                    turnoff.data = true;
-                    mainClass._shutdown.publish(turnoff);
+                    if (!pid_closed)
+                    {
+                        std_msgs::Bool turnoff;
+                        turnoff.data = true;
+                        mainClass._shutdown.publish(turnoff);
+                        pid_closed = true;
+                    }
 
                     timePublish.data = ros::Time::now().toSec() - initialTime.toSec();
                     ROS_INFO("Mission Time: %f", timePublish.data);
