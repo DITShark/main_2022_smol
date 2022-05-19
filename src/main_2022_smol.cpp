@@ -329,6 +329,10 @@ public:
     void correctMissionTime()
     {
         mission_waitTime = time_adjustment;
+        if (time_adjustment == -1)
+        {
+            mission_waitTime = waitTime_Normal;
+        }
     }
 };
 
@@ -535,13 +539,14 @@ void checkDeleteList()
 {
     bool checkFinish = false;
 
+    cout << "Mission No." << path_List[goal_num].get_pathType() << " Check Delete List :" << endl;
+
     cout << "Delete List Before: ";
     for (size_t i = 0; i < delete_List.size(); i++)
     {
-        cout << delete_List[i] << " ";
+        cout << "No." << delete_List[i] << " ";
     }
     cout << endl;
-    cout << "Deleting..." << endl;
 
     while (1)
     {
@@ -553,6 +558,7 @@ void checkDeleteList()
         {
             if (path_List[goal_num].get_pathType() == delete_List[i])
             {
+                cout << "Delete Mission No." << path_List[goal_num].get_pathType() << endl;
                 goal_num++;
                 mission_num = goal_num;
                 while (path_List[goal_num].get_pathType() == 0)
@@ -572,7 +578,7 @@ void checkDeleteList()
     cout << "Delete List After: ";
     for (size_t i = 0; i < delete_List.size(); i++)
     {
-        cout << delete_List[i] << " ";
+        cout << "No." << delete_List[i] << " ";
     }
     cout << endl;
     cout << endl;
@@ -749,7 +755,10 @@ public:
             }
             break;
         }
+        cout << endl;
         mission_waitTime = 0;
+        mission_success = true;
+        ROS_INFO("Mission Success !");
         cout << endl;
     }
 
@@ -757,8 +766,17 @@ public:
     {
         if (feedback_activate)
         {
-            mission_waitTime = 0;
-            mission_success = true;
+            // mission_waitTime = 0;
+            if (msg->data)
+            {
+                pico_point += msg->data;
+                ROS_INFO("Mission Success !");
+            }
+            else
+            {
+                ROS_INFO("Mission Failed !");
+            }
+            cout << endl;
         }
     }
 
@@ -838,7 +856,7 @@ public:
     ros::Subscriber _haveObsatcles = nh.subscribe<std_msgs::Bool>("have_obstacles", 1000, &mainProgram::emergency_callback, this);                   // Get emergency state from lidar
     ros::Subscriber _FinishOrNot = nh.subscribe<std_msgs::Bool>("Finishornot", 1000, &mainProgram::moving_callback, this);                           // Get finish moving state from controller
     ros::Subscriber _feedback = nh.subscribe<std_msgs::Int64>("feedback", 1000, &mainProgram::feedback_callback, this);                              // Get feedfback from mission
-    ros::Subscriber _subpoint = nh.subscribe<std_msgs::Int32>("/add_Point", 1000, &mainProgram::point_callback, this);                               // Get Tera's Point
+    ros::Subscriber _subpoint = nh.subscribe<std_msgs::Int32>("/add_point", 1000, &mainProgram::point_callback, this);                               // Get Tera's Point
     ros::Subscriber _resistance = nh.subscribe<std_msgs::Int64>("how_much_resistance", 1000, &mainProgram::resistance_callback, this);               // Get Resistance from mission
 
     // ROS Service Server
@@ -1219,11 +1237,17 @@ int main(int argc, char **argv)
                     {
                         doing = false;
 
-                        if (mission_success)
-                        {
-                            pico_point += getMissionPoints(path_List[goal_num].get_pathType());
-                            mission_success = false;
-                        }
+                        // if (mission_waitTime != 0)
+                        // {
+                        //     mission_success = false;
+                        //     ROS_INFO("Mission Time %.1f seconds is Up !", mission_waitTime);
+                        // }
+
+                        // if (mission_success)
+                        // {
+                        //     pico_point += getMissionPoints(path_List[goal_num].get_pathType());
+                        //     mission_success = false;
+                        // }
 
                         if (goal_num == path_List.size() - 1)
                         {
@@ -1270,7 +1294,7 @@ int main(int argc, char **argv)
                     setVL53Update(path_List[goal_num].get_pathType(), &next_docking_goal);
                     mainClass._docking.publish(next_docking_goal);
                     mainClass._target.publish(next_target);
-                    ROS_INFO(" Time to Go Home !!! : Moving to x:[%.3f] y:[%.3f]", path_List[goal_num].get_x(), path_List[goal_num].get_y());
+                    ROS_INFO("Time to Go Home !!! : Moving to x:[%.3f] y:[%.3f]", path_List[goal_num].get_x(), path_List[goal_num].get_y());
                     cout << endl;
                 }
 
@@ -1286,17 +1310,29 @@ int main(int argc, char **argv)
                     now_Status = FINISH;
                     ROS_INFO("Time Up ! Close All Things !");
                     cout << endl;
-
-                    std_msgs::Bool turnoff;
-                    turnoff.data = true;
-                    mainClass._shutdown.publish(turnoff);
-                    pid_closed = true;
                 }
 
                 break;
 
             case FINISH:
-                if (!finish_mission && ros::Time::now().toSec() - initialTime.toSec() > 99.85)
+                if (!finish_mission)
+                {
+                    timePublish.data = ros::Time::now().toSec() - initialTime.toSec();
+                    ROS_INFO("Mission Time: %f", timePublish.data);
+                    mainClass._time.publish(timePublish);
+
+                    total_point = pico_point + add_point + 20;
+                    pointPublish.data = total_point;
+                    ROS_INFO("Total Point: %d", pointPublish.data);
+                    mainClass._pubpoint.publish(pointPublish);
+                    cout << endl;
+
+                    ROS_INFO("Finish All Mission");
+                    finish_mission = true;
+                    cout << endl;
+                }
+
+                if (ros::Time::now().toSec() - initialTime.toSec() > 100)
                 {
                     if (!pid_closed)
                     {
@@ -1305,22 +1341,9 @@ int main(int argc, char **argv)
                         mainClass._shutdown.publish(turnoff);
                         pid_closed = true;
                     }
-
-                    timePublish.data = ros::Time::now().toSec() - initialTime.toSec();
-                    ROS_INFO("Mission Time: %f", timePublish.data);
-                    mainClass._time.publish(timePublish);
-
-                    total_point = pico_point + add_point;
-                    pointPublish.data = total_point;
-                    ROS_INFO("Total Point: %d", pointPublish.data);
-                    mainClass._pubpoint.publish(pointPublish);
-
-                    cout << endl;
-                    ROS_INFO("Finish All Mission");
-                    finish_mission = true;
                 }
 
-                total_point = pico_point + add_point;
+                total_point = pico_point + add_point + 20;
                 pointPublish.data = total_point;
                 mainClass._pubpoint.publish(pointPublish);
 
