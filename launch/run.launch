@@ -1,7 +1,0 @@
-<launch>
-
-    <include file="$(find main_2022)/launch/main_beta.launch"/>
-
-    <include file="$(find main_2022_smol)/launch/main_smol.launch"/>
-
-</launch>
