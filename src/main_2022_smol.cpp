@@ -848,7 +848,7 @@ public:
     ros::Publisher _time = nh.advertise<std_msgs::Float32>("total_Time", 1000);                // Publish total Time
     ros::Publisher _pubpoint = nh.advertise<std_msgs::Int32>("/total_point", 1000);            // Publish total Point
     ros::Publisher _docking = nh.advertise<std_msgs::Float32MultiArray>("docking_goal", 1000); // Publish vl53 goal
-    ros::Publisher _shutdown = nh.advertise<std_msgs::Bool>("shutdown", 1000);                 // Publish turn off PID to base
+    ros::Publisher _shutdown = nh.advertise<std_msgs::Bool>("shutdown", 1000);                 // Publish PID status to base
 
     // ROS Topics Subscribers
     // ros::Subscriber _globalFilter = nh.subscribe<nav_msgs::Odometry>("global_filter", 1000, &mainProgram::position_callback, this);               // Get position from localization
@@ -1154,6 +1154,9 @@ int main(int argc, char **argv)
                 if (run_state)
                 {
                     run_state = 0;
+                    std_msgs::Bool bb;
+                    bb.data = false;
+                    mainClass._shutdown.publish(bb);
                     if (path_List.size() == 0)
                     {
                         now_Status = FINISH;
@@ -1341,6 +1344,10 @@ int main(int argc, char **argv)
                         mainClass._shutdown.publish(turnoff);
                         pid_closed = true;
                     }
+
+                    std_msgs::Char cc;
+                    cc.data = '@';
+                    mainClass._arm.publish(cc);
                 }
 
                 total_point = pico_point + add_point + 20;
